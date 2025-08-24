@@ -242,10 +242,16 @@ let supa = supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 /*** AUTH (OTP) ***/
 async function refreshAuthUI(){
-  const { data: { user } } = await supa.auth.getUser();
-  const logged = !!user;
-  $('#loginBtn').style.display = logged ? 'none' : '';
-  $('#logoutBtn').style.display = logged ? '' : 'none';
+  async function refreshAuthUI(){
+  // لا توثيق. اعتبر نفسك "مُسجّل"
+  const logged = true;
+  document.getElementById('loginBtn').style.display  = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  const protect = ['#st_push','#a_push','#b_push','#g_push','#st_upload','#st_list','#syncBtn'];
+  protect.forEach(id=>{ const el=document.querySelector(id); if(el){ el.classList.remove('disabled'); el.disabled=false; }});
+  syncNote('no-auth mode');
+  return null;
+}
   // تعطيل الأزرار الحساسة عند عدم تسجيل الدخول
   const protect = ['#st_push','#a_push','#b_push','#g_push','#st_upload','#st_list','#syncBtn'];
   protect.forEach(id=>{ const el=$(id); if(!el) return; el.classList.toggle('disabled',!logged); el.disabled=!logged; });
