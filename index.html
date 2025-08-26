@@ -558,7 +558,7 @@ $('#g_pull').onclick=async()=>{ syncNote('pulling grades…');
   save(d); refreshKPIs(); fillAnalyticsDropdown(); syncNote('pulled');
 };
 $('#g_push').onclick=async()=>{ syncNote('pushing grades…');
-  await supa.from('grades').delete().neq('id','00000000-0000-0000-000000000000');
+  await supa.from('grades').delete().neq('id','00000000-0000-0000-0000-000000000000');
   if(d.grades.length){ const rows=d.grades.map(g=>({id:g.id,date:g.date,student_id:g.studentId,class:g.class,homework:g.homework,tasks:g.tasks,particip:g.particip,quiz:g.quiz,final:g.final}));
     const {error}=await supa.from('grades').insert(rows); if(error) return alert(error.message); }
   refreshKPIs(); fillAnalyticsDropdown(); syncNote('pushed');
@@ -792,15 +792,25 @@ async function backupSaveToCloud(label=''){
 }
 async function backupList(){
   const {data,error}=await supa.storage.from(BK_BUCKET).list('',{limit:200,sortBy:{column:'created_at',order:'desc'}});
-  if(error){ alert('فشل قراءة البكت: '+error.message); return []; }
+  if(error){ return []; } // لا نكسر الصفحة
   return (data||[]).filter(x=>x.name?.toLowerCase().endsWith('.json'));
 }
 function humanBytes(n){ if(n==null) return '—'; if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; if(n<1024*1024*1024) return (n/1024/1024).toFixed(1)+' MB'; return (n/1024/1024/1024).toFixed(1)+' GB'; }
 async function renderBackups(){
-  const rows=await backupList(); const tb=$('#bk_table tbody'); tb.innerHTML=''; let i=1;
+  const tb=$('#bk_table tbody'); tb.innerHTML='';
+  let rows=[];
+  try{ rows=await backupList(); }catch(e){ rows=[]; }
+  if(!rows || !rows.length){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="8"><small class="muted">لا توجد لقطات أو لا يمكن الوصول للبكت <code></code>. أنشئه كـ Public من Storage.</small></td>`;
+    tb.appendChild(tr);
+    return;
+  }
+  let i=1;
   rows.forEach(r=>{
     const pub=supa.storage.from(BK_BUCKET).getPublicUrl(r.name).data.publicUrl;
-    const parts=r.name.split('_'); const stamp=parts[1]?.replace('.json','')||''; const label=(r.name.match(/_(.+)\.json$/)?.[1]||'').replace(/-/g,' ');
+    const parts=r.name.split('_'); const stamp=parts[1]?.replace('.json','')||''; 
+    const label=(r.name.match(/_(.+)\.json$/)?.[1]||'').replace(/-/g,' ');
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td></td>
@@ -831,28 +841,42 @@ $('#bk_local_export').onclick = ()=>$('#s_export').click();
 $('#bk_cloud_save').onclick = async ()=>{ syncNote('saving snapshot…'); const ok=await backupSaveToCloud($('#bk_label').value.trim()); if(ok){ alert('تم حفظ لقطة في السحابة'); renderBackups(); syncNote('snapshot saved'); } };
 $('#bk_refresh').onclick = ()=>renderBackups();
 
-/*** لقطة تلقائية قبل أي Push/Sync ***/
-async function autoSnapshot(reason='auto'){ try{ await backupSaveToCloud(reason); }catch(_){ /* تجاهل */ } }
-const _st_push=$('#st_push').onclick; $('#st_push').onclick=async()=>{ await autoSnapshot('before_students_push'); return _st_push(); };
-const _a_push=$('#a_push').onclick;   $('#a_push').onclick  =async()=>{ await autoSnapshot('before_attendance_push'); return _a_push(); };
-const _b_push=$('#b_push').onclick;   $('#b_push').onclick  =async()=>{ await autoSnapshot('before_behavior_push'); return _b_push(); };
-const _g_push=$('#g_push').onclick;   $('#g_push').onclick  =async()=>{ await autoSnapshot('before_grades_push'); return _g_push(); };
-const _gdn_push=$('#gdn_push').onclick; $('#gdn_push').onclick=async()=>{ await autoSnapshot('before_guardians_push'); return _gdn_push(); };
-const _cl_push=$('#cl_push').onclick;   $('#cl_push').onclick=async()=>{ await autoSnapshot('before_contacts_push'); return _cl_push(); };
-// زر Sync الكل
-const _syncAll=$('#syncBtn').onclick;
-$('#syncBtn').onclick=async()=>{ await autoSnapshot('before_full_sync'); return _syncAll(); };
+/*** لقطة تلقائية قبل أي Push — فقط الرفع، بدون اللعب بزِر Sync ***/
+async function autoSnapshot(label='auto'){ try{ await backupSaveToCloud(label); }catch(e){ console.warn('autoSnapshot failed:', e); } }
+{
+  const old_st_push=$('#st_push').onclick; $('#st_push').onclick=async()=>{ await autoSnapshot('before_students_push'); return old_st_push(); };
+  const old_a_push=$('#a_push').onclick;   $('#a_push').onclick  =async()=>{ await autoSnapshot('before_attendance_push'); return old_a_push(); };
+  const old_b_push=$('#b_push').onclick;   $('#b_push').onclick  =async()=>{ await autoSnapshot('before_behavior_push'); return old_b_push(); };
+  const old_g_push=$('#g_push').onclick;   $('#g_push').onclick  =async()=>{ await autoSnapshot('before_grades_push'); return old_g_push(); };
+  const old_gdn_push=$('#gdn_push').onclick; $('#gdn_push').onclick=async()=>{ await autoSnapshot('before_guardians_push'); return old_gdn_push(); };
+  const old_cl_push=$('#cl_push').onclick;   $('#cl_push').onclick=async()=>{ await autoSnapshot('before_contacts_push'); return old_cl_push(); };
+}
 
-/*** سحب/رفع مجمّع ***/
-$('#syncBtn').onclick=async()=>{
-  await $('#st_pull').onclick(); await $('#a_pull').onclick(); await $('#b_pull').onclick(); await $('#g_pull').onclick();
-  await $('#gdn_pull').onclick(); await $('#cl_pull').onclick();
-  syncNote('sync done');
+/*** Sync ↕︎ — مُعالج واحد فقط (سَحب + لقطة قبل السحب) ***/
+$('#syncBtn').onclick = async () => {
+  try{
+    syncNote('snapshot…');
+    await autoSnapshot('before_full_sync');
+
+    syncNote('pulling…');
+    if (typeof $('#st_pull').onclick === 'function') await $('#st_pull').onclick();
+    if (typeof $('#a_pull').onclick  === 'function') await $('#a_pull').onclick();
+    if (typeof $('#b_pull').onclick  === 'function') await $('#b_pull').onclick();
+    if (typeof $('#g_pull').onclick  === 'function') await $('#g_pull').onclick();
+    if (typeof $('#gdn_pull').onclick=== 'function') await $('#gdn_pull').onclick();
+    if (typeof $('#cl_pull').onclick === 'function') await $('#cl_pull').onclick();
+
+    syncNote('done');
+    alert('تمت المزامنة + حفظ لقطة احتياطية.');
+  }catch(e){
+    console.error(e);
+    alert('تعذّرت المزامنة: '+(e.message||e));
+    syncNote('error');
+  }
 };
 
 /*** التقارير/KPI/تحليلات ***/
 function fillAnalyticsDropdown(){ /* ضمن fillAllDropdowns */ }
-function runReportOnceIfRangeSet(){ if($('#rp_from').value && $('#rp_to').value) runReport(); }
 
 /*** بناء مبدئي ***/
 function renderAll(){ renderStudents(); fillAllDropdowns(); buildAttendance(); renderBehavior(); renderGuardians(); renderContactLogs(); }
@@ -865,7 +889,7 @@ init();
 /*** Service Worker بسيط ***/
 if('serviceWorker' in navigator){
   const swBlob=new Blob([`
-    const CACHE='daybook-pages-supa-v10';
+    const CACHE='daybook-pages-supa-v11';
     const ASSETS=['./index.html'];
     self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
     self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>k!==CACHE?caches.delete(k):null)))));
