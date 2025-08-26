@@ -2,317 +2,229 @@
 (function(){
   "use strict";
 
-  /* ========= أساسيات مشتركة ========= */
-  const $ = (sel,root=document)=> root.querySelector(sel);
-  const $$ = (sel,root=document)=> [...root.querySelectorAll(sel)];
-  const esc = s => String(s??'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-  const DBKEY = window.DBKEY || 'daybook_cloud_v1';
+  /* ================== أدوات عامة ================== */
+  const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc= s=>String(s??'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  const DBKEY='daybook_cloud_v1';
+  const DOCS_BUCKET='student-docs';     // المرفقات
+  const BACKUPS_BUCKET='backups';        // النسخ الاحتياطي
 
-  // مستودع الحالة (نفس بنية ملفك: roster, attSessions, behavior, grades, terms ...)
-  if (!window.d) window.d = { roster:[], attSessions:[], behavior:[], grades:[], terms:[] };
+  // مستودع الحالة (يحمل من localStorage إن وجد)
+  window.d = window.d || { roster:[], attSessions:[], behavior:[], grades:[], terms:[] };
+  try{ const raw=localStorage.getItem(DBKEY); if(raw){ window.d=JSON.parse(raw); } }catch{}
 
-  // تذكّر آخر اختيار صف
+  function saveAll(){ try{ localStorage.setItem(DBKEY, JSON.stringify(window.d)); }catch{} }
+
+  // ملتقط أخطاء حتى لا تتحول الصفحة لبيضاء
+  window.addEventListener('error', e=>{ console.error(e); });
+  window.addEventListener('unhandledrejection', e=>{ console.error(e); });
+
+  // تذكّر آخر صف مختار
   const LAST = {
-    set(cls){ try{ localStorage.setItem('last_class', cls||''); }catch{} },
+    set(v){ try{ localStorage.setItem('last_class', v||''); }catch{} },
     get(){ try{ return localStorage.getItem('last_class')||''; }catch{ return '' } }
   };
 
-  // أدوات تخزين JSON في localStorage
-  function saveAll() {
-    try { localStorage.setItem(DBKEY, JSON.stringify(window.d)); }
-    catch (e) { alert('تعذر الحفظ محليًا: '+e.message); }
-  }
-  function loadAll() {
-    try {
-      const raw = localStorage.getItem(DBKEY);
-      if (raw) window.d = JSON.parse(raw);
-    } catch {}
-  }
-
-  // استدعها عند الإقلاع
-  loadAll();
-
-  /* ========= 1) النسخ الاحتياطي السحابي / الاستعادة ========= */
-  const BACKUPS_BUCKET = 'backups';
-
-  async function backupToCloud() {
+  /* ================== النسخ الاحتياطي / الاستعادة ================== */
+  async function backupToCloud(){
+    if(!window.supa) return alert('Supabase غير مهيأ.');
     try{
-      const blob = new Blob([JSON.stringify(window.d||{})], {type:'application/json'});
-      const path = `backup_${Date.now()}.json`;
-      const up = await supa.storage.from(BACKUPS_BUCKET).upload(path, blob, {contentType:'application/json', upsert:false});
-      if (up.error) throw up.error;
-      alert('تم حفظ نسخة احتياطية في السحابة.');
-    }catch(e){ alert('فشل النسخ الاحتياطي: '+e.message); }
+      const blob=new Blob([JSON.stringify(window.d||{})],{type:'application/json'});
+      const path=`backup_${Date.now()}.json`;
+      const up=await supa.storage.from(BACKUPS_BUCKET).upload(path, blob, {contentType:'application/json', upsert:false});
+      if(up.error){
+        if(/Bucket not found/i.test(up.error.message)) return alert('أنشئ bucket اسمه backups في Supabase ▸ Storage.');
+        throw up.error;
+      }
+      alert('تم حفظ نسخة احتياطية في السحابة');
+    }catch(err){ alert('فشل النسخ الاحتياطي: '+err.message); }
   }
-
-  async function restoreLatestFromCloud() {
+  async function restoreLatestFromCloud(){
+    if(!window.supa) return alert('Supabase غير مهيأ.');
     try{
-      const L = await supa.storage.from(BACKUPS_BUCKET).list('', {sortBy:{column:'created_at',order:'desc'}, limit:1});
-      if (L.error) throw L.error;
-      if (!L.data || !L.data.length) return alert('لا توجد نسخ احتياطية.');
-      const file = L.data[0].name;
-      const dl = await supa.storage.from(BACKUPS_BUCKET).download(file);
-      if (dl.error) throw dl.error;
-      const text = await dl.data.text();
-      const obj = JSON.parse(text);
-      window.d = obj; saveAll();
-      alert('تمت الاستعادة. سيُعاد تحميل الصفحة.');
-      location.reload();
-    }catch(e){ alert('فشل الاستعادة: '+e.message); }
+      const L=await supa.storage.from(BACKUPS_BUCKET).list('',{sortBy:{column:'created_at',order:'desc'},limit:1});
+      if(L.error){ 
+        if(/Bucket not found/i.test(L.error.message)) return alert('أنشئ bucket اسمه backups في Supabase.');
+        throw L.error;
+      }
+      if(!L.data?.length) return alert('لا توجد نسخ احتياطية.');
+      const dl=await supa.storage.from(BACKUPS_BUCKET).download(L.data[0].name);
+      if(dl.error) throw dl.error;
+      const obj=JSON.parse(await dl.data.text());
+      window.d=obj; saveAll(); alert('تمت الاستعادة'); location.reload();
+    }catch(err){ alert('فشل الاستعادة: '+err.message); }
   }
-
-  const btnBackup = $('#s_backup_cloud');
-  if (btnBackup) btnBackup.addEventListener('click', backupToCloud);
-  const btnRestore = $('#s_restore_cloud');
-  if (btnRestore) btnRestore.addEventListener('click', restoreLatestFromCloud);
+  $('#s_backup_cloud')?.addEventListener('click', backupToCloud);
+  $('#s_restore_cloud')?.addEventListener('click', restoreLatestFromCloud);
 
   // مسح بيانات الجهاز
-  function resetLocal(){
-    if (confirm('مسح بيانات الجهاز لهذا الموقع؟')) {
-      localStorage.removeItem(DBKEY);
-      alert('تم المسح. سيُعاد تحميل الصفحة.');
-      location.reload();
-    }
-  }
-  // كشفها عالمياً لمن يريد زر منفصل
+  function resetLocal(){ if(confirm('مسح بيانات الجهاز؟')){ localStorage.removeItem(DBKEY); location.reload(); } }
   window.Daybook = Object.assign(window.Daybook||{}, { resetLocal, backupToCloud, restoreLatestFromCloud });
 
-  /* ========= 2) طباعة التقارير ========= */
-  const btnRptPrint = $('#rp_print');
-  if (btnRptPrint) btnRptPrint.addEventListener('click', ()=> window.print());
-
-  /* ========= 3) تحسين المرفقات (أيقونة/حجم/نسخ رابط) ========= */
-  function iconFor(mime){
-    if(!mime) return '📎';
-    if (mime.startsWith('image/')) return '🖼️';
-    if (mime.includes('pdf')) return '📄';
-    if (mime.startsWith('video/')) return '🎞️';
-    if (mime.includes('zip')) return '🗜️';
-    return '📎';
-  }
-  function humanSize(b){
-    if (!+b) return '—';
-    const u=['B','KB','MB','GB','TB']; let i=0, s=+b;
-    while(s>=1024 && i<u.length-1){ s/=1024; i++; }
-    return s.toFixed(1)+' '+u[i];
-  }
-  // call this بعد ما تبني جدول المرفقات في صفحتك
-  function enhanceAttachmentsUI(container){
-    const root = container || document;
-    // أزرار نسخ
+  /* ================== تحسين المرفقات ================== */
+  function iconFor(m){ if(!m) return '📎'; if(m.startsWith('image/'))return'🖼️'; if(m.includes('pdf'))return'📄'; if(m.startsWith('video/'))return'🎞️'; if(m.includes('zip'))return'🗜️'; return'📎'; }
+  function humanSize(b){ let s=+b||0,u=['B','KB','MB','GB','TB'],i=0; while(s>=1024&&i<u.length-1){s/=1024;i++;} return s? (s.toFixed(1)+' '+u[i]):'—'; }
+  function enhanceAttachmentsUI(root=document){
     root.querySelectorAll('[data-copy]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const url = btn.getAttribute('data-copy');
-        navigator.clipboard.writeText(url).then(()=> alert('تم نسخ الرابط'));
-      });
+      btn.onclick=()=>navigator.clipboard.writeText(btn.dataset.copy).then(()=>alert('تم نسخ الرابط'));
     });
-    // أطبع حجمًا بصيغة بشرية إن كان متاحًا
-    root.querySelectorAll('[data-size-bytes]').forEach(el=>{
-      const v = +el.getAttribute('data-size-bytes') || 0;
-      el.textContent = humanSize(v);
-    });
-    // ضع أيقونة حسب mime
-    root.querySelectorAll('[data-mime]').forEach(el=>{
-      const m = el.getAttribute('data-mime')||'';
-      el.textContent = iconFor(m);
-    });
+    root.querySelectorAll('[data-size-bytes]').forEach(el=>{ el.textContent=humanSize(el.dataset.sizeBytes); });
+    root.querySelectorAll('[data-mime]').forEach(el=>{ el.textContent=iconFor(el.dataset.mime); });
   }
-  window.Daybook.enhanceAttachmentsUI = enhanceAttachmentsUI;
+  window.Daybook = Object.assign(window.Daybook||{}, { enhanceAttachmentsUI });
 
-  /* ========= 4) ملخّص الحضور ========= */
+  // مثال رفع ملف (استخدمه حيث تبني واجهة المرفقات)
+  async function uploadStudentFile(path, file){
+    if(!window.supa) return alert('Supabase غير مهيأ.');
+    try{
+      const up=await supa.storage.from(DOCS_BUCKET).upload(path, file, { upsert:false });
+      if(up.error){
+        if(/Bucket not found/i.test(up.error.message)) return alert('أنشئ bucket اسمه student-docs في Supabase.');
+        throw up.error;
+      }
+      return up.data; // { path }
+    }catch(err){ alert('Storage error: '+err.message); return null; }
+  }
+  window.Daybook.uploadStudentFile = uploadStudentFile;
+
+  /* ================== ملخص الحضور ================== */
   function refreshAttendanceSummary(){
-    const badge = $('#a_summary'); if(!badge) return;
-    const date = $('#a_date')?.value || '';
-    const cls  = $('#a_class')?.value || '';
-    const sessions = (d.attSessions||[]).filter(s => (!cls || s.class===cls) && (!date || s.date===date));
-    badge.textContent = `جلسات: ${sessions.length}`;
+    const b=$('#a_summary'); if(!b) return;
+    const date=$('#a_date')?.value||'', cls=$('#a_class')?.value||'';
+    const sessions=(d.attSessions||[]).filter(s=>(!cls||s.class===cls)&&(!date||s.date===date));
+    b.textContent=`جلسات: ${sessions.length}`;
   }
-  // اربطه بتغيير الفلاتر إن وُجدت
-  ['a_date','a_class'].forEach(id=>{
-    const el = $('#'+id); if(el) el.addEventListener('change', refreshAttendanceSummary);
-  });
+  $('#a_date')?.addEventListener('change', refreshAttendanceSummary);
+  $('#a_class')?.addEventListener('change', refreshAttendanceSummary);
 
-  /* ========= 5) شريط إحصائيات التقارير ========= */
+  /* ================== شريط إحصائيات التقارير ================== */
   function refreshReportStats(){
-    const badge = $('#rp_stats'); if(!badge) return;
-    const from = $('#rp_from')?.value || '0000-00-00';
-    const to   = $('#rp_to')?.value   || '9999-12-31';
-    const cls  = $('#rp_class')?.value || '';
-    const sess = (d.attSessions||[]).filter(s=>(!cls || s.class===cls) && s.date>=from && s.date<=to);
-    const totalEntries = sess.reduce((n,s)=> n + ((s.entries||[]).length), 0);
-    const all = (d.grades||[]).filter(g=>(!cls || g.class===cls) && g.date>=from && g.date<=to).map(g=> +g.total||0);
-    const avg = all.length ? (all.reduce((a,b)=>a+b,0)/all.length).toFixed(1) : '—';
-    badge.textContent = `جلسات: ${sess.length} | قيود حضور: ${totalEntries} | متوسط الدرجات: ${avg}`;
+    const badge=$('#rp_stats'); if(!badge) return;
+    const from=$('#rp_from')?.value||'0000-00-00', to=$('#rp_to')?.value||'9999-12-31', cls=$('#rp_class')?.value||'';
+    const sess=(d.attSessions||[]).filter(s=>(!cls||s.class===cls)&&s.date>=from&&s.date<=to);
+    const totalEntries=sess.reduce((n,s)=>n+(s.entries?.length||0),0);
+    const all=(d.grades||[]).filter(g=>(!cls||g.class===cls)&&g.date>=from&&g.date<=to).map(g=>+g.total||0);
+    const avg=all.length?(all.reduce((a,b)=>a+b,0)/all.length).toFixed(1):'—';
+    badge.textContent=`جلسات: ${sess.length} | قيود حضور: ${totalEntries} | متوسط الدرجات: ${avg}`;
   }
-  ['rp_from','rp_to','rp_class'].forEach(id=>{
-    const el = $('#'+id); if(el) el.addEventListener('change', refreshReportStats);
-  });
+  ['rp_from','rp_to','rp_class'].forEach(id=>$('#'+id)?.addEventListener('change', refreshReportStats));
 
-  /* ========= 6) تحليل الدرجات ========= */
+  /* ================== تحليل الدرجات ================== */
   function buildGradesAnalysis(){
-    const btn = $('#g_analyze'); const box = $('#g_analysis');
-    if(!btn || !box) return;
-    btn.addEventListener('click', ()=>{
-      const cls = $('#g_class')?.value || '';
-      const list = (d.roster||[]).filter(s=>!cls || s.class===cls);
-      // آخر رصد لكل طالب
-      const lastBy = {};
-      [...(d.grades||[])].reverse().forEach(g=>{ if(!lastBy[g.studentId]) lastBy[g.studentId]=g; });
-      const rows = list.map(s=>{
-        const g = lastBy[s.id]||{};
-        return { name:s.name, total:+g.total||0 };
-      });
-      const top = rows.slice().sort((a,b)=>b.total-a.total).slice(0,5);
-      const weak = rows.filter(r=>r.total<50).sort((a,b)=>a.total-b.total).slice(0,5);
-
-      box.style.display = 'block';
-      box.innerHTML = `
-        <h3>تحليل سريع</h3>
-        <div class="grid">
-          <div>
-            <strong>أعلى 5:</strong>
-            <ol>${top.map(r=>`<li>${esc(r.name)} — ${r.total}</li>`).join('')}</ol>
-          </div>
-          <div>
-            <strong>بحاجة دعم (&lt;50):</strong>
-            <ol>${weak.map(r=>`<li>${esc(r.name)} — ${r.total}</li>`).join('')}</ol>
-          </div>
-        </div>
-      `;
-    });
+    const box=$('#g_analysis'); if(!box) return;
+    const cls=$('#g_class')?.value||'';
+    const list=(d.roster||[]).filter(s=>!cls||s.class===cls);
+    const lastBy={}; [...(d.grades||[])].reverse().forEach(g=>{ if(!lastBy[g.studentId]) lastBy[g.studentId]=g; });
+    const rows=list.map(s=>({name:s.name,total:+(lastBy[s.id]?.total||0)}));
+    const top=rows.slice().sort((a,b)=>b.total-a.total).slice(0,5);
+    const weak=rows.filter(r=>r.total<50).sort((a,b)=>a.total-b.total).slice(0,5);
+    box.style.display='block';
+    box.innerHTML=`
+      <h3>تحليل سريع</h3>
+      <div class="grid">
+        <div><strong>أعلى 5:</strong><ol>${top.map(r=>`<li>${esc(r.name)} — ${r.total}</li>`).join('')}</ol></div>
+        <div><strong>بحاجة دعم (&lt;50):</strong><ol>${weak.map(r=>`<li>${esc(r.name)} — ${r.total}</li>`).join('')}</ol></div>
+      </div>`;
   }
+  $('#g_analyze')?.addEventListener('click', buildGradesAnalysis);
 
-  /* ========= 7) بحث الطلاب + تذكّر الصف ========= */
+  // تعبئة قائمة طلاب الدرجات حسب الصف
+  function fillGradesStudents(){
+    const sel=$('#g_student'); if(!sel) return;
+    const cls=$('#g_class')?.value||'';
+    const list=(d.roster||[]).filter(s=>!cls||s.class===cls);
+    sel.innerHTML=list.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  }
+  $('#g_class')?.addEventListener('change', ()=>{ LAST.set($('#g_class').value); fillGradesStudents(); });
+
+  /* ================== بحث قائمة الطلاب ================== */
   function hookStudentSearch(){
-    const inp = $('#st_search'); if(!inp) return;
+    const inp=$('#st_search'); if(!inp) return;
     inp.addEventListener('input', ()=>{
-      const q = inp.value.trim();
-      // نطلق حدثًا عامًّا ليعيد بناء جدول الطلاب بفلتر
-      document.dispatchEvent(new CustomEvent('roster:search', {detail:{q}}));
+      const q=inp.value.trim();
+      document.dispatchEvent(new CustomEvent('roster:search',{detail:{q}})); // يفترض جدولك يسمع لهذا الحدث
     });
   }
 
-  /* ========= 8) مذكرة الطالب ========= */
+  /* ================== مذكرة الطالب ================== */
   function sm_fillStudents(){
-    const sel = $('#sm_student'); if(!sel) return;
-    const roster = (d.roster||[]).filter(s=>s && s.name);
-    sel.innerHTML = roster.map(s=>`<option value="${s.id}">${esc(s.name)} (${esc(s.class||'')})</option>`).join('');
+    const sel=$('#sm_student'); if(!sel) return;
+    const list=(d.roster||[]).filter(s=>s&&s.name);
+    sel.innerHTML=list.map(s=>`<option value="${s.id}">${esc(s.name)} (${esc(s.class||'')})</option>`).join('');
   }
-  function sm_attendanceStats(studentId, from, to){
-    let present=0, absent=0, late=0, leave=0, total=0;
+  function sm_attendanceStats(id,from,to){
+    let pr=0,ab=0,lt=0,lv=0,tot=0;
     (d.attSessions||[]).forEach(ss=>{
-      if(ss.date < from || ss.date > to) return;
-      const e = (ss.entries||[]).find(x=>x.studentId===studentId); if(!e) return;
-      total++; const s=e.status;
-      if(s==='حاضر') present++;
-      else if(s==='غائب') absent++;
-      else if(s==='متأخر') late++;
-      else if(s==='استئذان') leave++;
+      if(ss.date<from||ss.date>to) return;
+      const e=(ss.entries||[]).find(x=>x.studentId===id); if(!e) return;
+      tot++; const s=e.status;
+      if(s==='حاضر') pr++; else if(s==='غائب') ab++; else if(s==='متأخر') lt++; else if(s==='استئذان') lv++;
     });
-    const pct = total ? Math.round((present/total)*100) : null;
-    return {present, absent, late, leave, total, pct};
+    return {present:pr, absent:ab, late:lt, leave:lv, total:tot, pct: tot?Math.round(pr/tot*100):null};
   }
-  function sm_behaviorStats(studentId, from, to){
-    let pos=0, neg=0;
-    const items = (d.behavior||[]).filter(b=>b.studentId===studentId && b.date>=from && b.date<=to);
+  function sm_behaviorStats(id,from,to){
+    let pos=0,neg=0;
+    const items=(d.behavior||[]).filter(b=>b.studentId===id && b.date>=from && b.date<=to);
     items.forEach(b=>{ if(b.type==='positive') pos+=(+b.points||0); else neg+=Math.abs(+b.points||0); });
-    const latest = items.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
-    return {pos, neg, latest};
+    return { pos, neg, latest: items.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3) };
   }
-  function sm_gradeStats(studentId, from, to){
-    const rows = (d.grades||[]).filter(g=>g.studentId===studentId && g.date>=from && g.date<=to);
+  function sm_gradeStats(id,from,to){
+    const rows=(d.grades||[]).filter(g=>g.studentId===id && g.date>=from && g.date<=to);
     if(!rows.length) return {best:null,last:null};
-    const best = rows.slice().sort((a,b)=> (+b.total||0)-(+a.total||0))[0];
-    const last = rows.slice().sort((a,b)=> b.date.localeCompare(a.date))[0];
+    const best=rows.slice().sort((a,b)=>(+b.total||0)-(+a.total||0))[0];
+    const last=rows.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
     return {best,last};
   }
   function sm_buildText(){
-    const sid = $('#sm_student')?.value; const pv = $('#sm_preview'); if(!sid||!pv) return alert('اختر الطالب');
-    const stu = (d.roster||[]).find(s=>s.id===sid);
-    const from = $('#sm_from')?.value || '0000-00-00';
-    const to   = $('#sm_to')?.value   || '9999-12-31';
-    const incAtt = $('#sm_att')?.checked; const incBeh = $('#sm_beh')?.checked; const incGrd = $('#sm_grd')?.checked;
-
-    let html = `<h2>مذكرة بشأن الطالب / ${esc(stu?.name||'')}</h2>
-      <div class="meta">الصف: ${esc(stu?.class||'—')} — المدة: ${esc(from)} إلى ${esc(to)}</div>`;
-
-    if(incAtt){
-      const A = sm_attendanceStats(sid, from, to);
-      html += `<div class="sec"><strong>أولًا: الحضور والانضباط</strong><br>
-        الجلسات: ${A.total||0}. حضر: ${A.present}, غياب: ${A.absent}, تأخر: ${A.late}, استئذان: ${A.leave}.
-        ${A.pct!=null?`نسبة الحضور: ${A.pct}%`:''}
-      </div>`;
-    }
-    if(incBeh){
-      const B = sm_behaviorStats(sid, from, to);
-      const latest = B.latest.map(b=>`• ${esc(b.date)} — ${b.type==='positive'?'إيجابي':'سلبي'} (${b.points||0}): ${esc(b.category||'')} — ${esc(b.note||'')}`).join('<br>');
-      html += `<div class="sec"><strong>ثانيًا: السلوكيات</strong><br>
-        مجموع الإيجابي: ${B.pos}، السلبي: ${B.neg}.<br>
-        ${latest?`أحدث الملاحظات:<br>${latest}`:'لا توجد ملاحظات في هذه الفترة.'}
-      </div>`;
-    }
-    if(incGrd){
-      const G = sm_gradeStats(sid, from, to), last = G.last||{};
-      html += `<div class="sec"><strong>ثالثًا: التحصيل الدراسي</strong><br>
-        أفضل مجموع: ${G.best?(+G.best.total||0):'—'}.
-        أحدث رصد: ${esc(G.last?G.last.date:'—')}
-        ${G.last?` — واجبات ${+last.homework||0}/10، مهام ${+last.tasks||0}/20، مشاركة ${+last.particip||0}/10، اختبار قصير ${+last.quiz||0}/20، نهائي ${+last.final||0}/40، المجموع ${+last.total||0}/100`:''}.
-      </div>`;
-    }
-    html += `<div class="sec"><strong>خلاصة وتوصيات</strong><br>
-      – متابعة الواجبات والاختبارات القصيرة.<br>
-      – تعزيز السلوك الإيجابي داخل الصف.<br>
-      – الحفاظ على الحضور المنتظم ومعالجة التأخر مبكرًا.<br>
-    </div>
-    <div style="margin-top:18px">حرر في: ${new Date().toLocaleDateString('ar')} — توقيع المعلم: ____________</div>`;
-
-    pv.innerHTML = html;
+    const stuId=$('#sm_student')?.value, pv=$('#sm_preview'); if(!stuId||!pv) return;
+    const stu=(d.roster||[]).find(s=>s.id===stuId);
+    const from=$('#sm_from')?.value||'0000-00-00', to=$('#sm_to')?.value||'9999-12-31';
+    const incA=$('#sm_att')?.checked, incB=$('#sm_beh')?.checked, incG=$('#sm_grd')?.checked;
+    let html=`<h2>مذكرة بشأن الطالب / ${esc(stu?.name||'')}</h2>
+              <div class="meta">الصف: ${esc(stu?.class||'—')} — المدة: ${esc(from)} إلى ${esc(to)}</div>`;
+    if(incA){ const A=sm_attendanceStats(stuId,from,to);
+      html+=`<div class="sec"><strong>أولًا: الحضور والانضباط</strong><br>
+         الجلسات: ${A.total||0}. حضر: ${A.present}, غياب: ${A.absent}, تأخر: ${A.late}, استئذان: ${A.leave}.
+         ${A.pct!=null?`نسبة الحضور: ${A.pct}%`:''}</div>`; }
+    if(incB){ const B=sm_behaviorStats(stuId,from,to);
+      const latest=B.latest.map(b=>`• ${esc(b.date)} — ${b.type==='positive'?'إيجابي':'سلبي'} (${b.points||0}): ${esc(b.category||'')} — ${esc(b.note||'')}`).join('<br>');
+      html+=`<div class="sec"><strong>ثانيًا: السلوكيات</strong><br>
+         مجموع الإيجابي: ${B.pos}، السلبي: ${B.neg}.<br>${latest?`أحدث الملاحظات:<br>${latest}`:'لا توجد ملاحظات في هذه الفترة.'}</div>`; }
+    if(incG){ const G=sm_gradeStats(stuId,from,to), L=G.last||{};
+      html+=`<div class="sec"><strong>ثالثًا: التحصيل الدراسي</strong><br>
+         أفضل مجموع: ${G.best?(+G.best.total||0):'—'}.
+         أحدث رصد: ${esc(G.last?G.last.date:'—')}
+         ${G.last?` — واجبات ${+L.homework||0}/10، مهام ${+L.tasks||0}/20، مشاركة ${+L.particip||0}/10، اختبار ${+L.quiz||0}/20، نهائي ${+L.final||0}/40، المجموع ${+L.total||0}/100`:''}
+      </div>`; }
+    html+=`<div class="sec"><strong>خلاصة وتوصيات</strong><br>
+       – متابعة الواجبات والاختبارات القصيرة.<br>
+       – تعزيز السلوك الإيجابي داخل الصف.<br>
+       – الحفاظ على الحضور المنتظم ومعالجة التأخر مبكرًا.<br></div>
+       <div style="margin-top:18px">حرر في: ${new Date().toLocaleDateString('ar')} — توقيع المعلم: ____________</div>`;
+    pv.innerHTML=html;
   }
-  function sm_print(){ window.print(); }
+  $('#sm_build')?.addEventListener('click', sm_buildText);
+  $('#sm_print')?.addEventListener('click', ()=>window.print());
+  (function(){ const t=new Date().toISOString().slice(0,10); if($('#sm_from')&&!$('#sm_from').value) $('#sm_from').value=t; if($('#sm_to')&&!$('#sm_to').value) $('#sm_to').value=t; })();
 
-  const smBuild = $('#sm_build'); if(smBuild) smBuild.addEventListener('click', sm_buildText);
-  const smPrn = $('#sm_print'); if(smPrn) smPrn.addEventListener('click', sm_print);
+  /* ================== نقاط ربط لتحديث الواجهة بعد تغيّر البيانات ================== */
+  function afterRosterChanged(){ sm_fillStudents(); hookStudentSearch(); fillGradesStudents(); }
+  function afterAttendanceChanged(){ refreshAttendanceSummary(); }
+  function afterReportFiltersChanged(){ refreshReportStats(); }
+  function afterGradesChanged(){ /* لا شيء فوري */ }
 
-  // تعيين تواريخ افتراضية
-  (function(){
-    const today = new Date().toISOString().slice(0,10);
-    if($('#sm_from') && !$('#sm_from').value) $('#sm_from').value = today;
-    if($('#sm_to') && !$('#sm_to').value) $('#sm_to').value = today;
-  })();
-
-  /* ========= 9) نقاط ربط مع كودك الأساسي ========= */
-  // نداءات تُستدعى بعد تحميل/تغيير البيانات لتحديث الواجهات الجديدة:
-  function afterRosterChanged(){
-    sm_fillStudents();
-    hookStudentSearch();
-  }
-  function afterAttendanceChanged(){
-    refreshAttendanceSummary();
-  }
-  function afterReportFiltersChanged(){
-    refreshReportStats();
-  }
-  function afterGradesChanged(){
-    buildGradesAnalysis();
-  }
-
-  // اكشف نقاط الربط عالميًا كي تناديها من أماكن البناء الحالية لديك
+  // كشفها عالميًا كي يناديها كودك عند السحب من Supabase
   window.Daybook = Object.assign(window.Daybook||{}, {
-    afterRosterChanged, afterAttendanceChanged, afterReportFiltersChanged, afterGradesChanged,
-    LAST
+    LAST, afterRosterChanged, afterAttendanceChanged, afterReportFiltersChanged, afterGradesChanged
   });
 
   // تشغيل أولي
-  afterRosterChanged();
-  afterAttendanceChanged();
-  afterReportFiltersChanged();
-  afterGradesChanged();
+  afterRosterChanged(); afterAttendanceChanged(); afterReportFiltersChanged();
 
-  /* ========= 10) حماية من التعارض: لا تسمح بتكرار buildGrades فارغ ========= */
-  if (typeof window.buildGrades === 'function' && String(window.buildGrades).length < 50) {
-    // لو فيه تعريف فارغ قديم، احذفه (لن يؤثر إن لم يوجد)
+  // حماية من تعريف buildGrades الفارغ القديم
+  if (typeof window.buildGrades==='function' && String(window.buildGrades).length<50){
     try{ delete window.buildGrades; }catch{}
   }
-
 })();
 </script>
