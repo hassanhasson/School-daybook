@@ -1,28 +1,32 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>School Daybook — Supabase Ready</title>
-
-  <!-- Babel لضمان التوافق -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- مكتبة Supabase -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>School Daybook — Supabase</title>
+  <link rel="icon" href="favicon.png" type="image/png">
   <style>
-    body{font-family:"Noto Sans Arabic",system-ui,Arial;background:#f5f7fb;margin:0;padding:0}
-    header{background:#0f172a;color:#fff;padding:14px;font-weight:700}
-    .wrap{max-width:1100px;margin:20px auto;padding:0 12px}
-    .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-    .tabs button{padding:8px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff}
-    .tabs button.active{background:#2563eb;color:#fff}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #e5e7eb;padding:8px;text-align:right}
-    th{background:#f3f4f6}
-    input,select,button{font:inherit;padding:6px 10px;border-radius:6px;border:1px solid #d1d5db}
+    :root{
+      --ink:#0f172a; --bg:#f6f7fb; --card:#fff; --muted:#64748b; --border:#e5e7eb; --brand:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:"Noto Sans Arabic",system-ui,Segoe UI,Arial}
+    header{background:var(--ink);color:#fff;padding:14px 16px;font-weight:700}
+    .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+    .tabs button{background:#fff;border:1px solid var(--border);padding:8px 14px;border-radius:10px;cursor:pointer}
+    .tabs button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:8px}
     button{cursor:pointer}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid var(--border);padding:8px;text-align:right}
+    th{background:#f3f4f6}
+    small.muted{color:var(--muted)}
+    .hidden{display:none}
+    ul{padding:0;list-style:none}
+    li{padding:6px 0;border-bottom:1px solid var(--border)}
   </style>
 </head>
 <body>
@@ -39,33 +43,36 @@
     <!-- الطلاب -->
     <section id="tab-students" class="card">
       <h3>إدارة الطلاب</h3>
-      <div>
-        <input id="studentName" placeholder="اسم الطالب"/>
-        <input id="studentClass" placeholder="الصف/الشعبة"/>
+      <div class="row">
+        <input id="studentName" placeholder="اسم الطالب">
+        <input id="studentClass" placeholder="الصف/الشعبة">
         <button id="addStudent">إضافة</button>
+        <button id="pullCloudStudents" title="سحب من السحابة">سحب من السحابة</button>
       </div>
+      <small class="muted">يتم ترتيب الأسماء أبجديًا تلقائيًا.</small>
       <table>
-        <thead><tr><th>#</th><th>الاسم</th><th>الصف</th></tr></thead>
+        <thead><tr><th>#</th><th>الاسم</th><th>الصف/الشعبة</th></tr></thead>
         <tbody id="tblStudents"></tbody>
       </table>
     </section>
 
     <!-- الحضور -->
-    <section id="tab-attendance" class="card" hidden>
+    <section id="tab-attendance" class="card hidden">
       <h3>الحضور</h3>
-      <div>
+      <div class="row">
         <select id="selStudentA"></select>
-        <input id="dateA" type="date"/>
-        <select id="statusA">
-          <option value="present">حاضر</option>
-          <option value="absent">غائب</option>
-          <option value="late">متأخر</option>
-        </select>
+        <input id="dateA" type="date">
         <select id="periodA">
           <option value="1">الحصة 1</option><option value="2">الحصة 2</option>
           <option value="3">الحصة 3</option><option value="4">الحصة 4</option>
           <option value="5">الحصة 5</option><option value="6">الحصة 6</option>
           <option value="7">الحصة 7</option>
+        </select>
+        <select id="statusA">
+          <option value="present">حاضر</option>
+          <option value="absent">غائب</option>
+          <option value="late">متأخر</option>
+          <option value="excused">مستأذن</option>
         </select>
         <button id="addAttendance">حفظ</button>
       </div>
@@ -76,41 +83,43 @@
     </section>
 
     <!-- السلوك -->
-    <section id="tab-behavior" class="card" hidden>
+    <section id="tab-behavior" class="card hidden">
       <h3>السلوك</h3>
-      <div>
+      <div class="row">
         <select id="selStudentB"></select>
-        <input id="dateB" type="date"/>
-        <select id="typeB">
-          <option value="positive">إيجابي</option>
-          <option value="negative">سلبي</option>
-        </select>
+        <input id="dateB" type="date">
         <select id="periodB">
           <option value="1">الحصة 1</option><option value="2">الحصة 2</option>
           <option value="3">الحصة 3</option><option value="4">الحصة 4</option>
           <option value="5">الحصة 5</option><option value="6">الحصة 6</option>
           <option value="7">الحصة 7</option>
         </select>
+        <select id="typeB">
+          <option value="positive">إيجابي</option>
+          <option value="negative">سلبي</option>
+        </select>
+        <input id="pointsB" type="number" step="1" placeholder="النقاط (اختياري)">
         <button id="addBehavior">حفظ</button>
       </div>
       <table>
-        <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>النوع</th></tr></thead>
+        <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>النوع</th><th>نقاط</th></tr></thead>
         <tbody id="tblBehavior"></tbody>
       </table>
     </section>
 
     <!-- الدرجات -->
-    <section id="tab-grades" class="card" hidden>
+    <section id="tab-grades" class="card hidden">
       <h3>الدرجات</h3>
-      <div>
+      <div class="row">
         <select id="selStudentG"></select>
         <select id="itemG">
-          <option value="participation">مشاركة</option>
-          <option value="homework">واجب</option>
-          <option value="quiz">اختبار قصير</option>
-          <option value="final">نهائي</option>
+          <option value="participation">مشاركة (10)</option>
+          <option value="homework">واجبات (10)</option>
+          <option value="tasks">مهام أدائية (20)</option>
+          <option value="quiz">اختبار قصير تحريري (20)</option>
+          <option value="final">اختبار نهاية الفصل (40)</option>
         </select>
-        <input id="scoreG" type="number" placeholder="الدرجة"/>
+        <input id="scoreG" type="number" step="0.5" placeholder="الدرجة">
         <button id="addGrade">حفظ</button>
       </div>
       <table>
@@ -120,129 +129,230 @@
     </section>
 
     <!-- المرفقات -->
-    <section id="tab-attachments" class="card" hidden>
-      <h3>المرفقات</h3>
-      <div>
+    <section id="tab-attachments" class="card hidden">
+      <h3>مرفقات الطالب</h3>
+      <div class="row">
         <select id="selStudentF"></select>
-        <input type="file" id="fileInput"/>
-        <button id="uploadFile">رفع</button>
+        <input type="file" id="fileInput">
+        <button id="uploadFile">رفع ملف</button>
+        <button id="refreshFiles">تحديث قائمة الملفات</button>
       </div>
+      <small class="muted">يرفع إلى Bucket: <b>student-docs</b> (خارجياً عام). لو ظهر “Bucket not found” أنشئه في Supabase/Storage واجعله Public.</small>
       <ul id="fileList"></ul>
     </section>
   </div>
 
-  <!-- التطبيق -->
-  <script type="text/babel">
-  // Supabase config (مفاتيحك هنا)
-  const SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
+  <!-- 1) مكتبة Supabase UMD يجب أن تُحمّل قبل سكربتنا -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <!-- 2) سكربت التطبيق (فانيلا JS) -->
+  <script>
+  (function(){
+    "use strict";
 
-  // ========== تبويبات ==========
-  document.querySelectorAll('.tabs button').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      let t = btn.dataset.tab;
-      document.querySelectorAll('section[id^="tab-"]').forEach(sec=>{
-        sec.hidden = sec.id !== "tab-"+t;
+    // مفاتيح Supabase — كما طلبت “مدموجة داخل الملف”
+    var SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
+    var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
+
+    // تأكيد تحميل المكتبة
+    if (!window.supabase || !window.supabase.createClient) {
+      alert("مكتبة Supabase لم تُحمّل. تأكد من اتصال الإنترنت ومن عدم حجب السكربتات.");
+      return;
+    }
+    var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // عناصر DOM
+    var tabsBtns = document.querySelectorAll('.tabs button');
+    var sections = {
+      students: document.getElementById('tab-students'),
+      attendance: document.getElementById('tab-attendance'),
+      behavior: document.getElementById('tab-behavior'),
+      grades: document.getElementById('tab-grades'),
+      attachments: document.getElementById('tab-attachments')
+    };
+
+    tabsBtns.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        tabsBtns.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        var t = btn.getAttribute('data-tab');
+        Object.keys(sections).forEach(function(key){
+          sections[key].classList.toggle('hidden', key !== t);
+        });
       });
     });
-  });
 
-  // ========== الطلاب ==========
-  let students = [];
-  async function loadStudents(){
-    let { data } = await sb.from("students").select("*");
-    students = data||[];
-    renderStudents();
-  }
-  function renderStudents(){
-    const tbody = document.getElementById("tblStudents");
-    tbody.innerHTML = students.map((s,i)=>
-      `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.classroom||""}</td></tr>`
-    ).join("");
-    // تعبئة القوائم
-    ["selStudentA","selStudentB","selStudentG","selStudentF"].forEach(id=>{
-      document.getElementById(id).innerHTML = students.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
-    });
-  }
-  document.getElementById("addStudent").onclick = async ()=>{
-    const name = document.getElementById("studentName").value;
-    const classroom = document.getElementById("studentClass").value;
-    let { data } = await sb.from("students").insert({ name, classroom }).select();
-    if(data){ students.push(data[0]); renderStudents(); }
-  };
+    // بيانات في الذاكرة
+    var students = [];
+    var attendance = [];
+    var behavior = [];
+    var grades = [];
 
-  // ========== الحضور ==========
-  let attendance = [];
-  async function renderAttendance(){
-    const tbody = document.getElementById("tblAttendance");
-    tbody.innerHTML = attendance.map((a,i)=>{
-      const stu = students.find(s=>s.id===a.student_id);
-      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${a.date}</td><td>${a.period}</td><td>${a.status}</td></tr>`;
-    }).join("");
-  }
-  document.getElementById("addAttendance").onclick = async ()=>{
-    const student_id = document.getElementById("selStudentA").value;
-    const date = document.getElementById("dateA").value;
-    const status = document.getElementById("statusA").value;
-    const period = parseInt(document.getElementById("periodA").value,10);
-    let { data } = await sb.from("attendance_entries").insert({ student_id,date,status,period }).select();
-    if(data){ attendance.push(data[0]); renderAttendance(); }
-  };
-
-  // ========== السلوك ==========
-  let behavior = [];
-  async function renderBehavior(){
-    const tbody = document.getElementById("tblBehavior");
-    tbody.innerHTML = behavior.map((b,i)=>{
-      const stu = students.find(s=>s.id===b.student_id);
-      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${b.date}</td><td>${b.period}</td><td>${b.type}</td></tr>`;
-    }).join("");
-  }
-  document.getElementById("addBehavior").onclick = async ()=>{
-    const student_id = document.getElementById("selStudentB").value;
-    const date = document.getElementById("dateB").value;
-    const type = document.getElementById("typeB").value;
-    const period = parseInt(document.getElementById("periodB").value,10);
-    let { data } = await sb.from("behavior").insert({ student_id,date,type,period }).select();
-    if(data){ behavior.push(data[0]); renderBehavior(); }
-  };
-
-  // ========== الدرجات ==========
-  let grades = [];
-  async function renderGrades(){
-    const tbody = document.getElementById("tblGrades");
-    tbody.innerHTML = grades.map((g,i)=>{
-      const stu = students.find(s=>s.id===g.student_id);
-      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${g.item}</td><td>${g.score}</td></tr>`;
-    }).join("");
-  }
-  document.getElementById("addGrade").onclick = async ()=>{
-    const student_id = document.getElementById("selStudentG").value;
-    const item = document.getElementById("itemG").value;
-    const score = parseFloat(document.getElementById("scoreG").value);
-    let { data } = await sb.from("grades").insert({ student_id,item,score }).select();
-    if(data){ grades.push(data[0]); renderGrades(); }
-  };
-
-  // ========== المرفقات ==========
-  document.getElementById("uploadFile").onclick = async ()=>{
-    const sid = document.getElementById("selStudentF").value;
-    const file = document.getElementById("fileInput").files[0];
-    if(!file) return;
-    const path = sid+"/"+Date.now()+"_"+file.name;
-    let { error } = await sb.storage.from("student-docs").upload(path,file);
-    if(!error){
-      const url = sb.storage.from("student-docs").getPublicUrl(path).data.publicUrl;
-      document.getElementById("fileList").innerHTML += `<li><a href="${url}" target="_blank">${file.name}</a></li>`;
+    // أدوات
+    function byNameAsc(a,b){
+      return (a.name||"").localeCompare(b.name||"", 'ar', {sensitivity:'base'});
     }
-  };
+    function fillStudentSelect(id){
+      var el = document.getElementById(id);
+      el.innerHTML = students.map(function(s){ return '<option value="'+s.id+'">'+s.name+'</option>'; }).join('');
+    }
+    function refreshAllStudentSelects(){
+      fillStudentSelect('selStudentA');
+      fillStudentSelect('selStudentB');
+      fillStudentSelect('selStudentG');
+      fillStudentSelect('selStudentF');
+    }
 
-  // بدء التشغيل
-  loadStudents();
+    // ----- الطلاب -----
+    function renderStudents(){
+      var tbody = document.getElementById('tblStudents');
+      tbody.innerHTML = students.map(function(s, i){
+        return '<tr><td>'+(i+1)+'</td><td>'+ (s.name||'') +'</td><td>'+ (s.classroom||'') +'</td></tr>';
+      }).join('');
+      refreshAllStudentSelects();
+    }
+    function loadStudents(){
+      return sb.from('students').select('*').then(function(res){
+        students = (res.data||[]).slice().sort(byNameAsc);
+        renderStudents();
+      });
+    }
+    document.getElementById('addStudent').addEventListener('click', function(){
+      var name = document.getElementById('studentName').value.trim();
+      var classroom = document.getElementById('studentClass').value.trim();
+      if(!name){ alert('أدخل اسم الطالب'); return; }
+      sb.from('students').insert({name:name, classroom:classroom}).select().then(function(res){
+        if(res.error){ alert(res.error.message); return; }
+        students.push(res.data[0]); students.sort(byNameAsc); renderStudents();
+        document.getElementById('studentName').value='';
+        document.getElementById('studentClass').value='';
+      });
+    });
+    document.getElementById('pullCloudStudents').addEventListener('click', loadStudents);
+
+    // ----- الحضور -----
+    function renderAttendance(){
+      var tbody = document.getElementById('tblAttendance');
+      tbody.innerHTML = attendance.map(function(a,i){
+        var stu = students.find(function(s){ return s.id===a.student_id; });
+        return '<tr><td>'+(i+1)+'</td><td>'+(stu?stu.name:'')+'</td><td>'+a.date+'</td><td>'+a.period+'</td><td>'+a.status+'</td></tr>';
+      }).join('');
+    }
+    function loadAttendance(){
+      return sb.from('attendance_entries').select('*').order('date',{ascending:false}).then(function(res){
+        attendance = res.data||[]; renderAttendance();
+      });
+    }
+    document.getElementById('addAttendance').addEventListener('click', function(){
+      var student_id = document.getElementById('selStudentA').value;
+      var date = document.getElementById('dateA').value;
+      var status = document.getElementById('statusA').value;
+      var period = parseInt(document.getElementById('periodA').value,10);
+      if(!student_id || !date){ alert('اختر الطالب والتاريخ'); return; }
+      sb.from('attendance_entries').insert({student_id:student_id,date:date,status:status,period:period}).select().then(function(res){
+        if(res.error){ alert(res.error.message); return; }
+        attendance.unshift(res.data[0]); renderAttendance();
+      });
+    });
+
+    // ----- السلوك -----
+    function renderBehavior(){
+      var tbody = document.getElementById('tblBehavior');
+      tbody.innerHTML = behavior.map(function(b,i){
+        var stu = students.find(function(s){ return s.id===b.student_id; });
+        return '<tr><td>'+(i+1)+'</td><td>'+(stu?stu.name:'')+'</td><td>'+b.date+'</td><td>'+b.period+'</td><td>'+b.type+'</td><td>'+(b.points||'')+'</td></tr>';
+      }).join('');
+    }
+    function loadBehavior(){
+      return sb.from('behavior').select('*').order('date',{ascending:false}).then(function(res){
+        behavior = res.data||[]; renderBehavior();
+      });
+    }
+    document.getElementById('addBehavior').addEventListener('click', function(){
+      var student_id = document.getElementById('selStudentB').value;
+      var date = document.getElementById('dateB').value;
+      var type = document.getElementById('typeB').value;
+      var period = parseInt(document.getElementById('periodB').value,10);
+      var points = parseInt(document.getElementById('pointsB').value,10) || null;
+      if(!student_id || !date){ alert('اختر الطالب والتاريخ'); return; }
+      sb.from('behavior').insert({student_id:student_id,date:date,type:type,period:period,points:points}).select().then(function(res){
+        if(res.error){ alert(res.error.message); return; }
+        behavior.unshift(res.data[0]); renderBehavior();
+      });
+    });
+
+    // ----- الدرجات -----
+    function renderGrades(){
+      var tbody = document.getElementById('tblGrades');
+      tbody.innerHTML = grades.map(function(g,i){
+        var stu = students.find(function(s){ return s.id===g.student_id; });
+        return '<tr><td>'+(i+1)+'</td><td>'+(stu?stu.name:'')+'</td><td>'+g.item+'</td><td>'+g.score+'</td></tr>';
+      }).join('');
+    }
+    function loadGrades(){
+      return sb.from('grades').select('*').order('created_at',{ascending:false}).then(function(res){
+        grades = res.data||[]; renderGrades();
+      });
+    }
+    document.getElementById('addGrade').addEventListener('click', function(){
+      var student_id = document.getElementById('selStudentG').value;
+      var item = document.getElementById('itemG').value;
+      var score = parseFloat(document.getElementById('scoreG').value);
+      if(!student_id || isNaN(score)){ alert('اختر الطالب وأدخل الدرجة'); return; }
+      sb.from('grades').insert({student_id:student_id,item:item,score:score}).select().then(function(res){
+        if(res.error){ alert(res.error.message); return; }
+        grades.unshift(res.data[0]); renderGrades();
+      });
+    });
+
+    // ----- المرفقات -----
+    var BUCKET = 'student-docs';
+    function ensureBucketAndList(){
+      // نجرب جلب قائمة للطالب الحالي
+      listFilesForSelected();
+    }
+    function currentStudentIdForFiles(){
+      return document.getElementById('selStudentF').value || '';
+    }
+    function listFilesForSelected(){
+      var sid = currentStudentIdForFiles();
+      var ul = document.getElementById('fileList');
+      ul.innerHTML = '';
+      if(!sid){ return; }
+      sb.storage.from(BUCKET).list(sid,{limit:100,sortBy:{column:'name',order:'asc'}}).then(function(res){
+        if(res.error){
+          alert(res.error.message + "\\nلو كان الخطأ Bucket not found: أنشئ student-docs (Public) في Storage.");
+          return;
+        }
+        (res.data||[]).forEach(function(obj){
+          var path = sid + '/' + obj.name;
+          var pub = sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+          var li = document.createElement('li');
+          li.innerHTML = '<a href="'+pub+'" target="_blank">'+obj.name+'</a> — <small>'+ (obj.updated_at||'') +'</small>';
+          ul.appendChild(li);
+        });
+      });
+    }
+    document.getElementById('refreshFiles').addEventListener('click', listFilesForSelected);
+    document.getElementById('selStudentF').addEventListener('change', listFilesForSelected);
+
+    document.getElementById('uploadFile').addEventListener('click', function(){
+      var sid = currentStudentIdForFiles();
+      var f = document.getElementById('fileInput').files[0];
+      if(!sid){ alert('اختر الطالب'); return; }
+      if(!f){ alert('اختر ملف'); return; }
+      var path = sid + '/' + Date.now() + '_' + f.name;
+      sb.storage.from(BUCKET).upload(path,f,{upsert:false}).then(function(res){
+        if(res.error){ alert(res.error.message); return; }
+        listFilesForSelected();
+      });
+    });
+
+    // تشغيل أولي
+    Promise.all([loadStudents(), loadAttendance(), loadBehavior(), loadGrades()]).then(function(){
+      ensureBucketAndList();
+    });
+  })();
   </script>
 </body>
 </html>
