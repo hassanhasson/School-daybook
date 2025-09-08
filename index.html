@@ -2,234 +2,249 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>School Daybook — Supabase</title>
-
-  <!-- فافيكون بسيط -->
-  <link rel="icon" href="data:image/svg+xml,
-  %3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E
-  %3Crect width='64' height='64' rx='10' fill='%230a3440'/%3E
-  %3Ctext x='50%' y='50%' font-family='Arial,Segoe UI,Roboto' font-weight='700'
-         font-size='28' fill='white' text-anchor='middle' dominant-baseline='central'%3ESD%3C/text%3E
-  %3C/svg%3E" type="image/svg+xml" />
-
-  <!-- ستايل خفيف -->
+  <link rel="icon" href="favicon.png" type="image/png">
   <style>
-    :root{
-      --ink:#0a3440; --ink-2:#124a5a; --bg:#f5f7fa; --card:#fff;
-      --muted:#6b7280; --ok:#16a34a; --warn:#ca8a04; --err:#dc2626;
-      --radius:12px;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:#111;font-family:"Noto Sans Arabic","Segoe UI",system-ui,Arial}
-    header{background:var(--ink);color:#fff;padding:16px 12px}
-    header .title{font-weight:800;letter-spacing:.3px}
-    .bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:#e9f1f4}
-    .tab{border:none;background:#dce9ee;color:#0b3a47;padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:600}
-    .tab.active{background:#0b3a47;color:#fff}
-    .wrap{max-width:1100px;margin:12px auto;padding:0 12px}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.06);padding:14px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input,select,button{font:inherit}
-    input,select{width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:10px;background:#fff}
-    .btn{padding:9px 14px;border-radius:10px;border:1px solid #d1d5db;background:#fff;cursor:pointer}
-    .btn.primary{background:#0b3a47;color:#fff;border-color:#0b3a47}
-    .btn.ghost{background:#ecf3f6}
-    .muted{color:var(--muted);font-size:.92rem}
-    table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th,td{padding:10px 12px;background:#fff}
-    th{color:#475569;background:#eef5f8;font-weight:700}
-    tr td:first-child, tr th:first-child{border-radius:12px 0 0 12px}
-    tr td:last-child,  tr th:last-child{border-radius:0 12px 12px 0}
-    .pill{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:#eef5f8;color:#0b3a47;font-weight:700}
-    .alert{padding:10px 12px;border-radius:10px;margin:8px 0}
-    .alert.ok{background:#ecfdf5;color:#065f46}
-    .alert.err{background:#fef2f2;color:#991b1b}
-    .hidden{display:none}
+    :root{--bg:#0f2435;--ink:#111;--muted:#666;--card:#fff;--pill:#e9eef3;--accent:#16a34a}
+    body{margin:0;background:#f5f7fb;color:var(--ink);font-family:"Noto Sans Arabic",system-ui,Segoe UI,Roboto}
+    header{background:var(--bg);color:#fff;padding:16px 20px;font-weight:700}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .pill{background:var(--pill);border-radius:999px;padding:8px 12px;border:0;cursor:pointer}
+    .pill.active{background:#dbeafe}
+    .btn{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 16px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .card{background:var(--card);border-radius:14px;box-shadow:0 1px 3px #0001;padding:16px;margin:12px 0}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    input,select{padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;min-width:160px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eee}
+    th{color:#334155;text-align:right;background:#f8fafc}
+    .small{color:var(--muted);font-size:.86rem}
+    .danger{background:#ef4444}
   </style>
 
-  <!-- مكتبة Supabase يجب أن تُحمّل قبل أي استعمال -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <!-- مكتبة Supabase (UMD) يجب أن تكون قبل سكربت التطبيق -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+  <script>
+  // ==== الإعداد المؤكد لـ Supabase ====
+  // هذه هي القيم التي زوّدتني بها:
+  const SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
+  const SUPABASE_ANON_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
+
+  // نحاول إنشاء العميل بأمان حتى لو فشلت المكتبة ما يطيح الموقع.
+  let sb = null;
+  (function initSupabase(){
+    try{
+      if (window.supabase && typeof window.supabase.createClient === "function"){
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: false }, // بدون تسجيل دخول
+        });
+        console.log("✅ Supabase client ready");
+      } else {
+        console.warn("⚠️ Supabase UMD not loaded; running local-only.");
+      }
+    }catch(e){
+      console.error("Supabase init error", e);
+    }
+  })();
+
+  // ==== أدوات مساعدة بسيطة ====
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  // ترتيب أبجدي عربي (للعرض فقط)
+  function sortArabic(list, key){
+    const coll = new Intl.Collator('ar', {sensitivity:'base'});
+    return list.slice().sort((a,b)=>coll.compare((a[key]||''),(b[key]||'')));
+  }
+
+  // تخزين محلي احتياطي (إذا تعطل السحابة لا يتعطل الموقع)
+  const LS_KEY = "daybook_students_v2";
+  function loadLocal(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch{ return [] } }
+  function saveLocal(rows){ localStorage.setItem(LS_KEY, JSON.stringify(rows||[])); }
+
+  // حالة الواجهة
+  let students = loadLocal();   // يبدأ محلياً، ثم نحاول السحب من السحابة
+  let syncing = false;
+
+  // رسم الجدول
+  function renderTable(){
+    const tbody = $("#students-body");
+    tbody.innerHTML = "";
+    // ترتيب للعرض
+    const view = sortArabic(students, "name");
+    view.forEach((s, idx)=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td>${s.name||""}</td>
+        <td>${s.class_name||""}</td>
+        <td>
+          <button class="pill danger" type="button" data-id="${s.id||""}" data-action="del">حذف</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // إضافة طالب
+  async function addStudent(){
+    const name = $("#in_name").value.trim();
+    const cls  = $("#in_class").value.trim();
+    if(!name){ alert("أدخل اسم الطالب"); return; }
+
+    // محلياً أولاً
+    const row = { id: crypto.randomUUID(), name, class_name: cls };
+    students.push(row);
+    saveLocal(students);
+    renderTable();
+
+    // إلى السحابة (لو متاح)
+    if(sb){
+      try{
+        const { error } = await sb.from("students").insert({
+          id: row.id, name: row.name, class_name: row.class_name
+        });
+        if(error) console.warn("Insert cloud error:", error.message);
+      }catch(e){ console.warn("Cloud insert exception:", e.message); }
+    }
+    $("#in_name").value = ""; $("#in_class").value="";
+  }
+
+  // حذف طالب
+  async function deleteStudent(id){
+    // محلي
+    students = students.filter(s=>s.id!==id);
+    saveLocal(students);
+    renderTable();
+    // سحابة
+    if(sb){
+      try{
+        const { error } = await sb.from("students").delete().eq("id", id);
+        if(error) console.warn("Cloud delete error:", error.message);
+      }catch(e){ console.warn("Cloud delete exception:", e.message); }
+    }
+  }
+
+  // مزامنة ↔️
+  async function syncPull(){
+    if(!sb){ alert("لا يوجد اتصال Supabase – يعمل محلياً فقط."); return; }
+    if(syncing) return; syncing = true; toggleSync(true);
+    try{
+      const { data, error } = await sb.from("students").select("id,name,class_name");
+      if(error) throw error;
+      // دمج و حفظ
+      const remote = data||[];
+      // اختر النسخة الأحدث ببساطة (نأخذ السحابة كما هي)
+      students = remote.length ? remote : students;
+      saveLocal(students);
+      renderTable();
+      toast("تم السحب من السحابة");
+    }catch(e){
+      console.error(e); alert("فشل السحب من السحابة");
+    }finally{ syncing=false; toggleSync(false); }
+  }
+
+  async function syncPush(){
+    if(!sb){ alert("لا يوجد اتصال Supabase – يعمل محلياً فقط."); return; }
+    if(syncing) return; syncing = true; toggleSync(true);
+    try{
+      // مسح الجدول ورفع المحلي (طريقة بسيطة مضمونة)
+      await sb.from("students").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if(students.length){
+        const { error } = await sb.from("students").insert(students.map(s=>({
+          id:s.id, name:s.name, class_name:s.class_name
+        })));
+        if(error) throw error;
+      }
+      toast("تم رفع المحلي للسحابة");
+    }catch(e){
+      console.error(e); alert("فشل الرفع للسحابة");
+    }finally{ syncing=false; toggleSync(false); }
+  }
+
+  function toggleSync(busy){
+    const btn = $("#btnSync");
+    btn.disabled = !!busy;
+    btn.textContent = busy ? "…Sync" : "Sync ↕";
+  }
+  function toast(msg){
+    const el = document.createElement("div");
+    el.textContent = msg;
+    el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#111;color:#fff;padding:10px 14px;border-radius:12px;z-index:9999";
+    document.body.appendChild(el); setTimeout(()=>el.remove(),1600);
+  }
+
+  // ربط الأحداث بعد تحميل DOM
+  document.addEventListener("DOMContentLoaded", ()=>{
+    // أزرار التبويب شكل فقط (أمثلة)
+    $$(".pill.tab").forEach(b=>{
+      b.addEventListener("click",()=>{$$(".pill.tab").forEach(x=>x.classList.remove("active")); b.classList.add("active")});
+    });
+
+    // إضافة طالب
+    $("#btnAdd").addEventListener("click", addStudent);
+
+    // حذف من الجدول (تفويض)
+    $("#students-body").addEventListener("click", e=>{
+      const t = e.target;
+      if(t && t.dataset && t.dataset.action==="del"){
+        const id = t.dataset.id; if(id) deleteStudent(id);
+      }
+    });
+
+    // مزامنة
+    $("#btnSync").addEventListener("click", async ()=>{
+      // ضغطه قصيرة = سحب، مع Shift = رفع
+      if(event.shiftKey) await syncPush(); else await syncPull();
+    });
+
+    // حاول سحب مبدئي إذا العميل جاهز
+    if(sb) syncPull();
+    renderTable();
+  });
+  </script>
 </head>
 <body>
-
   <header>
-    <div class="wrap">
-      <div class="row" style="justify-content:space-between">
-        <div class="title">School Daybook — Supabase</div>
-        <button id="btnSync" class="btn ghost" title="اختبار الاتصال">⟳ Sync</button>
-      </div>
+    <div class="wrap" style="display:flex;justify-content:space-between;align-items:center">
+      <div>School Daybook — Supabase</div>
+      <button id="btnSync" class="btn" type="button">Sync ↕</button>
     </div>
   </header>
 
-  <div class="bar wrap">
-    <button class="tab active" data-tab="students">الطلاب</button>
-    <button class="tab" data-tab="attendance">الحضور</button>
-    <button class="tab" data-tab="behavior">السلوك</button>
-    <button class="tab" data-tab="grades">الدرجات</button>
-    <button class="tab" data-tab="reports">التقارير</button>
-    <button class="tab" data-tab="attachments">المرفقات</button>
-  </div>
-
   <main class="wrap" id="app">
+    <!-- شريط تبويب بسيط (للتوافق مع بقية الصفحات عندك) -->
+    <div class="bar">
+      <button class="pill tab active" type="button">الطلاب</button>
+      <button class="pill tab" type="button">الحضور</button>
+      <button class="pill tab" type="button">السلوك</button>
+      <button class="pill tab" type="button">الدرجات</button>
+      <button class="pill tab" type="button">التقارير</button>
+      <button class="pill tab" type="button">المرفقات</button>
+    </div>
 
-    <!-- تبويب الطلاب -->
-    <section id="tab-students" class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:6px 0">إدارة الطلاب</h3>
-        <span id="studentsCount" class="muted"></span>
+    <section class="card">
+      <h3>إدارة الطلاب</h3>
+      <div class="row" style="margin:8px 0">
+        <input id="in_class"  placeholder="الصف/الشعبة: مثال ٦/أ">
+        <input id="in_name"   placeholder="اسم الطالب">
+        <button id="btnAdd" class="btn" type="button">إضافة</button>
       </div>
+      <div class="small">* الترتيب أبجدي عربي في العرض فقط</div>
 
-      <div class="grid" style="margin-top:8px">
-        <div><input id="inName" placeholder="اسم الطالب"/></div>
-        <div><input id="inClass" placeholder="الصف/الشعبة: مثال ٦/ب"/></div>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <button id="btnAdd" class="btn primary">إضافة</button>
-        <span class="muted">* الترتيب أبجدي عربي في العرض فقط</span>
-      </div>
-
-      <div id="studentsAlert" class="alert hidden"></div>
-
-      <div style="margin-top:14px;overflow:auto">
-        <table id="studentsTable">
+      <div class="card" style="padding:0;margin-top:12px">
+        <table>
           <thead>
-            <tr>
-              <th style="width:72px;text-align:center">#</th>
-              <th>الاسم</th>
-              <th style="width:200px">الصف</th>
-            </tr>
+            <tr><th>#</th><th>الاسم</th><th>الصف</th><th>إجراءات</th></tr>
           </thead>
-          <tbody><!-- يمتلئ ديناميكيًا --></tbody>
+          <tbody id="students-body"></tbody>
         </table>
       </div>
     </section>
-
-    <!-- تبويبات جاهزة بدون منطق بعد -->
-    <section id="tab-attendance" class="card hidden"><div class="muted">قسم الحضور — جاهز للإكمال لاحقًا.</div></section>
-    <section id="tab-behavior"   class="card hidden"><div class="muted">قسم السلوك — جاهز للإكمال لاحقًا.</div></section>
-    <section id="tab-grades"     class="card hidden"><div class="muted">قسم الدرجات — جاهز للإكمال لاحقًا.</div></section>
-    <section id="tab-reports"    class="card hidden"><div class="muted">قسم التقارير — جاهز للإكمال لاحقًا.</div></section>
-    <section id="tab-attachments" class="card hidden"><div class="muted">قسم المرفقات — جاهز للإكمال لاحقًا.</div></section>
-
   </main>
-
-  <!-- سكربت التطبيق (بدون Babel) -->
-  <script>
-  (function(){
-    // مفاتيحك (anon public) — انت طلبت تضمينها هنا
-    const SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
-
-    // إنشاء العميل — تأكد أن المكتبة فوق هذا السكربت
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // عناصر DOM
-    const tabsBtns = document.querySelectorAll(".tab");
-    const sections = {
-      students: document.getElementById("tab-students"),
-      attendance: document.getElementById("tab-attendance"),
-      behavior: document.getElementById("tab-behavior"),
-      grades: document.getElementById("tab-grades"),
-      reports: document.getElementById("tab-reports"),
-      attachments: document.getElementById("tab-attachments"),
-    };
-    const inName   = document.getElementById("inName");
-    const inClass  = document.getElementById("inClass");
-    const btnAdd   = document.getElementById("btnAdd");
-    const tBody    = document.querySelector("#studentsTable tbody");
-    const studentsAlert = document.getElementById("studentsAlert");
-    const studentsCount = document.getElementById("studentsCount");
-    const btnSync  = document.getElementById("btnSync");
-
-    // أداة رسائل
-    function showMsg(el, text, kind){
-      el.textContent = text;
-      el.className = "alert " + (kind === "err" ? "err" : "ok");
-      el.classList.remove("hidden");
-      setTimeout(()=> el.classList.add("hidden"), 3000);
-    }
-
-    // ترتيب أبجدي عربي في الواجهة
-    function sortArabic(list, key){
-      const collator = new Intl.Collator("ar", {sensitivity:"base"});
-      return list.slice().sort((a,b)=> collator.compare(a[key] || "", b[key] || ""));
-    }
-
-    // تحميل الطلاب
-    async function loadStudents(){
-      tBody.innerHTML = "<tr><td colspan='3' class='muted'>جاري التحميل…</td></tr>";
-      const { data, error } = await sb.from("students").select("id,name,klass");
-      if(error){
-        tBody.innerHTML = "";
-        console.error(error);
-        showMsg(studentsAlert,
-          "لا يمكن قراءة جدول الطلاب. تأكد أن جدول students موجود ومفعل RLS/السياسات كما جهزناه سابقًا.",
-          "err");
-        return;
-      }
-      const rows = sortArabic(data || [], "name");
-      studentsCount.textContent = rows.length ? `عدد الطلاب: ${rows.length}` : "";
-      tBody.innerHTML = rows.map((r,idx)=>`
-        <tr>
-          <td style="text-align:center"><span class="pill">${idx+1}</span></td>
-          <td>${escapeHtml(r.name||"")}</td>
-          <td>${escapeHtml(r.klass||"")}</td>
-        </tr>
-      `).join("");
-    }
-
-    // إضافة طالب
-    async function addStudent(){
-      const name = (inName.value || "").trim();
-      const klass = (inClass.value || "").trim();
-      if(!name){ inName.focus(); return; }
-      const { error } = await sb.from("students").insert({ name, klass });
-      if(error){
-        console.error(error);
-        showMsg(studentsAlert, "فشل حفظ الطالب: " + error.message, "err");
-        return;
-      }
-      inName.value = ""; inClass.value = "";
-      await loadStudents();
-      showMsg(studentsAlert, "تمت إضافة الطالب.", "ok");
-    }
-
-    // Sync اختبار اتصال سريع
-    async function quickSync(){
-      btnSync.disabled = true; btnSync.textContent = "⟳";
-      const { error } = await sb.from("students").select("id").limit(1);
-      if(error){ alert("Supabase ERROR: " + error.message); }
-      else{ alert("Supabase OK ✅"); }
-      btnSync.disabled = false; btnSync.textContent = "⟳ Sync";
-    }
-
-    // تبويب
-    function activateTab(name){
-      tabsBtns.forEach(b=> b.classList.toggle("active", b.dataset.tab===name));
-      Object.entries(sections).forEach(([k,sec])=>{
-        sec.classList.toggle("hidden", k!==name);
-      });
-    }
-
-    // حماية ضد HTML داخل الحقول
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, m => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[m]));
-    }
-
-    // أحداث
-    btnAdd.addEventListener("click", addStudent);
-    btnSync.addEventListener("click", quickSync);
-    tabsBtns.forEach(b=> b.addEventListener("click", ()=> activateTab(b.dataset.tab)));
-
-    // تشغيل
-    activateTab("students");
-    loadStudents();
-  })();
-  </script>
 </body>
 </html>
