@@ -3,562 +3,246 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-  <meta http-equiv="Pragma" content="no-cache"/>
-  <title>School Daybook — iPad Ready</title>
+  <title>School Daybook — Supabase Ready</title>
 
-  <!-- فافيكون (اختياري) -->
-  <link rel="icon" href="favicon.png" type="image/png"/>
-
-  <!-- نمط بسيط -->
-  <style>
-    :root{--ink:#0b2239;--bg:#f5f7fb;--muted:#6b7280;--ok:#10b981;--danger:#ef4444;--tab:#e5e7eb;}
-    html,body{margin:0;padding:0;background:var(--bg);color:#111;font-family:"Noto Sans Arabic",system-ui,AppleSystem,Segoe UI,Roboto,Arial;}
-    header{background:#0f172a;color:#fff;padding:14px 18px;font-weight:700;border-bottom:3px solid #111827;}
-    .wrap{max-width:1100px;margin:18px auto;padding:0 12px;}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-    .tabs button{background:var(--tab);border:1px solid #cbd5e1;padding:8px 12px;border-radius:10px;cursor:pointer}
-    .tabs button.active{background:#c7d2fe;border-color:#6366f1;font-weight:700}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:14px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .row > *{flex:1 1 220px}
-    input,select,button{font-size:15px}
-    input,select{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px}
-    .btn{padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
-    .btn.primary{background:#22c55e;color:#fff;border-color:#16a34a}
-    .btn.warn{background:#fee2e2;border-color:#fecaca}
-    .btn.danger{background:#ef4444;color:#fff;border-color:#b91c1c}
-    .btn.ghost{background:#f3f4f6}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid #e5e7eb;padding:8px 10px;text-align:start}
-    th{background:#f8fafc}
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .muted{color:var(--muted);font-size:13px}
-    .right{margin-inline-start:auto}
-  </style>
-
-  <!-- Babel: يضمن التوافق على iPad والمتصفحات القديمة -->
+  <!-- Babel لضمان التوافق -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Supabase (اختياري للمرفقات/السحابة) -->
+  <!-- مكتبة Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+  <style>
+    body{font-family:"Noto Sans Arabic",system-ui,Arial;background:#f5f7fb;margin:0;padding:0}
+    header{background:#0f172a;color:#fff;padding:14px;font-weight:700}
+    .wrap{max-width:1100px;margin:20px auto;padding:0 12px}
+    .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+    .tabs button{padding:8px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff}
+    .tabs button.active{background:#2563eb;color:#fff}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #e5e7eb;padding:8px;text-align:right}
+    th{background:#f3f4f6}
+    input,select,button{font:inherit;padding:6px 10px;border-radius:6px;border:1px solid #d1d5db}
+    button{cursor:pointer}
+  </style>
 </head>
 <body>
-  <header>School Daybook — Supabase + iPad</header>
+  <header>📘 School Daybook — Supabase</header>
   <div class="wrap">
-    <div class="toolbar">
-      <button id="btnSyncPull" class="btn">⭳ سحب من السحابة</button>
-      <button id="btnSyncPush" class="btn">⭱ رفع للسحابة</button>
-      <span class="muted">الحفظ محليًا يتم تلقائيًا</span>
-      <span class="right muted" id="status"></span>
-    </div>
-
     <div class="tabs">
       <button data-tab="students" class="active">الطلاب</button>
       <button data-tab="attendance">الحضور</button>
       <button data-tab="behavior">السلوك</button>
       <button data-tab="grades">الدرجات</button>
-      <button data-tab="reports">التقارير</button>
       <button data-tab="attachments">المرفقات</button>
-      <button data-tab="settings">الإعدادات</button>
     </div>
 
     <!-- الطلاب -->
     <section id="tab-students" class="card">
-      <div class="row">
-        <input id="inName" placeholder="اسم الطالب مثال: محمد أحمد"/>
-        <input id="inCode" placeholder="المعرّف (اختياري)"/>
-        <input id="inClass" placeholder="الصف/الشعبة مثال: 6/ب"/>
+      <h3>إدارة الطلاب</h3>
+      <div>
+        <input id="studentName" placeholder="اسم الطالب"/>
+        <input id="studentClass" placeholder="الصف/الشعبة"/>
+        <button id="addStudent">إضافة</button>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnAddStudent" class="btn primary">إضافة</button>
-        <input id="searchName" class="right" placeholder="...ابحث في الأسماء"/>
-      </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th style="width:60px">#</th><th>الاسم</th><th>المعرف</th><th>الصف/الشعبة</th><th style="width:160px">إجراءات</th></tr></thead>
-          <tbody id="tblStudents"></tbody>
-        </table>
-      </div>
+      <table>
+        <thead><tr><th>#</th><th>الاسم</th><th>الصف</th></tr></thead>
+        <tbody id="tblStudents"></tbody>
+      </table>
     </section>
 
     <!-- الحضور -->
     <section id="tab-attendance" class="card" hidden>
-      <div class="row">
+      <h3>الحضور</h3>
+      <div>
         <select id="selStudentA"></select>
-        <input id="inDateA" type="date"/>
-        <select id="selStatusA">
+        <input id="dateA" type="date"/>
+        <select id="statusA">
           <option value="present">حاضر</option>
           <option value="absent">غائب</option>
           <option value="late">متأخر</option>
-          <option value="excused">مستأذن</option>
         </select>
-        <select id="selPeriodA" title="رقم الحصة">
+        <select id="periodA">
           <option value="1">الحصة 1</option><option value="2">الحصة 2</option>
           <option value="3">الحصة 3</option><option value="4">الحصة 4</option>
           <option value="5">الحصة 5</option><option value="6">الحصة 6</option>
           <option value="7">الحصة 7</option>
         </select>
-        <input id="inNotesA" placeholder="ملاحظات"/>
+        <button id="addAttendance">حفظ</button>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnAddA" class="btn primary">حفظ الحضور</button>
-      </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th style="width:60px">#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>الحالة</th><th>ملاحظات</th><th style="width:100px">حذف</th></tr></thead>
-          <tbody id="tblA"></tbody>
-        </table>
-      </div>
+      <table>
+        <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>الحالة</th></tr></thead>
+        <tbody id="tblAttendance"></tbody>
+      </table>
     </section>
 
     <!-- السلوك -->
     <section id="tab-behavior" class="card" hidden>
-      <div class="row">
+      <h3>السلوك</h3>
+      <div>
         <select id="selStudentB"></select>
-        <input id="inDateB" type="date"/>
-        <select id="selTypeB">
+        <input id="dateB" type="date"/>
+        <select id="typeB">
           <option value="positive">إيجابي</option>
           <option value="negative">سلبي</option>
         </select>
-        <select id="selPeriodB" title="رقم الحصة">
+        <select id="periodB">
           <option value="1">الحصة 1</option><option value="2">الحصة 2</option>
           <option value="3">الحصة 3</option><option value="4">الحصة 4</option>
           <option value="5">الحصة 5</option><option value="6">الحصة 6</option>
           <option value="7">الحصة 7</option>
         </select>
-        <input id="inPointsB" type="number" step="1" placeholder="نقاط (مثال +2 أو -1)"/>
-        <input id="inNotesB" placeholder="ملاحظات"/>
+        <button id="addBehavior">حفظ</button>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnAddB" class="btn primary">حفظ السلوك</button>
-      </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th style="width:60px">#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>النوع</th><th>النقاط</th><th>ملاحظات</th><th style="width:100px">حذف</th></tr></thead>
-          <tbody id="tblB"></tbody>
-        </table>
-      </div>
+      <table>
+        <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>النوع</th></tr></thead>
+        <tbody id="tblBehavior"></tbody>
+      </table>
     </section>
 
-    <!-- الدرجات (مختصر؛ قابل للتوسعة) -->
+    <!-- الدرجات -->
     <section id="tab-grades" class="card" hidden>
-      <div class="row">
+      <h3>الدرجات</h3>
+      <div>
         <select id="selStudentG"></select>
-        <select id="selItemG">
-          <option value="participation">مشاركة (10)</option>
-          <option value="homework">واجبات (10)</option>
-          <option value="tasks">مهام أدائية (20)</option>
-          <option value="quiz">اختبار قصير (20)</option>
-          <option value="final">اختبار نهائي (40)</option>
+        <select id="itemG">
+          <option value="participation">مشاركة</option>
+          <option value="homework">واجب</option>
+          <option value="quiz">اختبار قصير</option>
+          <option value="final">نهائي</option>
         </select>
-        <input id="inScoreG" type="number" step="0.5" placeholder="الدرجة"/>
-        <input id="inNotesG" placeholder="ملاحظة (اختياري)"/>
+        <input id="scoreG" type="number" placeholder="الدرجة"/>
+        <button id="addGrade">حفظ</button>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnAddG" class="btn primary">حفظ الدرجة</button>
-      </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th style="width:60px">#</th><th>الطالب</th><th>البند</th><th>الدرجة</th><th>ملاحظة</th><th style="width:100px">حذف</th></tr></thead>
-          <tbody id="tblG"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- التقارير (سريع) -->
-    <section id="tab-reports" class="card" hidden>
-      <div class="row">
-        <select id="selStudentR"></select>
-        <input id="inReportMsg" placeholder="نص الملاحظة/التقرير"/>
-      </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnPrintR" class="btn">🖨️ طباعة تقرير</button>
-      </div>
-      <div id="reportPreview" class="card" style="display:none"></div>
+      <table>
+        <thead><tr><th>#</th><th>الطالب</th><th>البند</th><th>الدرجة</th></tr></thead>
+        <tbody id="tblGrades"></tbody>
+      </table>
     </section>
 
     <!-- المرفقات -->
     <section id="tab-attachments" class="card" hidden>
-      <div class="row">
-        <select id="selStudentFiles"></select>
-        <input id="inFile" type="file"/>
+      <h3>المرفقات</h3>
+      <div>
+        <select id="selStudentF"></select>
+        <input type="file" id="fileInput"/>
+        <button id="uploadFile">رفع</button>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnUpload" class="btn primary">رفع ملف</button>
-        <span class="muted">تُرفع إلى Bucket: <code>student-docs</code></span>
-      </div>
-      <div style="margin-top:10px">
-        <table>
-          <thead><tr><th style="width:60px">#</th><th>الاسم/النوع</th><th>الحجم</th><th>التاريخ</th><th>رابط</th><th style="width:100px">حذف</th></tr></thead>
-          <tbody id="tblFiles"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- الإعدادات -->
-    <section id="tab-settings" class="card" hidden>
-      <div class="row">
-        <input id="inSupabaseUrl" placeholder="SUPABASE_URL"/>
-        <input id="inSupabaseAnon" placeholder="SUPABASE_ANON_KEY"/>
-      </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button id="btnSaveSettings" class="btn primary">حفظ الإعدادات</button>
-        <button id="btnClearData" class="btn danger">مسح البيانات المحلية</button>
-      </div>
-      <div class="muted" style="margin-top:6px">إذا تُركت الإعدادات فارغة يعمل الموقع محليًا فقط.</div>
+      <ul id="fileList"></ul>
     </section>
   </div>
 
-  <!-- تطبيق: ES5 عبر Babel لضمان التوافق -->
-  <script type="text/babel"
-    data-presets="env"
-    data-plugins="proposal-logical-assignment-operators,proposal-optional-chaining,proposal-nullish-coalescing-operator">
-/* ========= حالة التطبيق ========= */
-var LS_KEY = 'daybook_cloud_v1';
-var state = {
-  students: [],
-  attendance: [],
-  behavior: [],
-  grades: [],
-  files: [],
-  settings: { supabaseUrl:'', supabaseAnon:'' }
-};
-var sb = null; // supabase client (اختياري)
+  <!-- التطبيق -->
+  <script type="text/babel">
+  // Supabase config (مفاتيحك هنا)
+  const SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
 
-/* ========= أدوات عامة ========= */
-function $(id){ return document.getElementById(id); }
-function toast(msg){ $('status').textContent = msg; setTimeout(function(){ $('status').textContent=''; }, 2500); }
-function sortArabicNames(list){
-  list.sort(function(a,b){
-    var an=(a.name||'').trim(), bn=(b.name||'').trim();
-    return an.localeCompare(bn,'ar',{sensitivity:'base',numeric:true});
-  });
-}
-function saveLocal(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
-}
-function loadLocal(){
-  var s = localStorage.getItem(LS_KEY);
-  if(!s) return;
-  try{
-    var obj = JSON.parse(s);
-    state = Object.assign(state, obj||{});
-  }catch(e){}
-}
-function refreshAll(){
-  renderStudents();
-  fillStudentSelects();
-  renderAttendance();
-  renderBehavior();
-  renderGrades();
-  renderFiles();
-}
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* ========= تبويبات ========= */
-Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(btn){
-  btn.addEventListener('click', function(){
-    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-    var t = btn.getAttribute('data-tab');
-    Array.prototype.forEach.call(document.querySelectorAll('section[id^="tab-"]'), function(sec){
-      sec.hidden = (sec.id !== 'tab-'+t);
+  // ========== تبويبات ==========
+  document.querySelectorAll('.tabs button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      let t = btn.dataset.tab;
+      document.querySelectorAll('section[id^="tab-"]').forEach(sec=>{
+        sec.hidden = sec.id !== "tab-"+t;
+      });
     });
   });
-});
 
-/* ========= الطلاب ========= */
-function renderStudents(){
-  sortArabicNames(state.students);
-  var q = ($('searchName').value||'').trim();
-  var list = state.students.filter(function(s){ return !q || (s.name||'').indexOf(q) !== -1; });
-  var html = list.map(function(s,i){
-    return '<tr>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+escapeHtml(s.name)+'</td>'+
-      '<td>'+(s.code||'')+'</td>'+
-      '<td>'+(s.classroom||'')+'</td>'+
-      '<td>'+
-        '<button class="btn ghost" data-edit="'+s.id+'">تعديل</button> '+
-        '<button class="btn warn" data-del="'+s.id+'">حذف</button>'+
-      '</td>'+
-    '</tr>';
-  }).join('');
-  $('tblStudents').innerHTML = html;
-  // ربط أزرار
-  Array.prototype.forEach.call(document.querySelectorAll('[data-del]'), function(b){
-    b.onclick = function(){
-      var id = b.getAttribute('data-del');
-      state.students = state.students.filter(function(x){ return x.id!==id; });
-      saveLocal(); refreshAll();
-    };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('[data-edit]'), function(b){
-    b.onclick = function(){
-      var id = b.getAttribute('data-edit');
-      var s = state.students.find(function(x){return x.id===id;});
-      if(!s) return;
-      $('inName').value = s.name||'';
-      $('inCode').value = s.code||'';
-      $('inClass').value = s.classroom||'';
-      // عند الضغط "إضافة" سيتم التعديل لأن نفس القيم
-    };
-  });
-}
-$('btnAddStudent').onclick = function(){
-  var name = $('inName').value.trim();
-  if(!name){ toast('اكتب الاسم'); return; }
-  var code = $('inCode').value.trim();
-  var classroom = $('inClass').value.trim();
-  // لو الاسم موجود بتعديل قيَمِه
-  var ex = state.students.find(function(s){return s.name===name;});
-  if(ex){
-    ex.code=code; ex.classroom=classroom;
-  }else{
-    state.students.push({ id:genId(), name:name, code:code, classroom:classroom });
+  // ========== الطلاب ==========
+  let students = [];
+  async function loadStudents(){
+    let { data } = await sb.from("students").select("*");
+    students = data||[];
+    renderStudents();
   }
-  $('inName').value=''; $('inCode').value=''; $('inClass').value='';
-  saveLocal(); refreshAll();
-};
-$('searchName').oninput = renderStudents;
+  function renderStudents(){
+    const tbody = document.getElementById("tblStudents");
+    tbody.innerHTML = students.map((s,i)=>
+      `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.classroom||""}</td></tr>`
+    ).join("");
+    // تعبئة القوائم
+    ["selStudentA","selStudentB","selStudentG","selStudentF"].forEach(id=>{
+      document.getElementById(id).innerHTML = students.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+    });
+  }
+  document.getElementById("addStudent").onclick = async ()=>{
+    const name = document.getElementById("studentName").value;
+    const classroom = document.getElementById("studentClass").value;
+    let { data } = await sb.from("students").insert({ name, classroom }).select();
+    if(data){ students.push(data[0]); renderStudents(); }
+  };
 
-function fillStudentSelects(){
-  var opts = state.students.map(function(s){ return '<option value="'+s.id+'">'+escapeHtml(s.name)+' ('+(s.classroom||'')+')</option>'; }).join('');
-  ['selStudentA','selStudentB','selStudentG','selStudentR','selStudentFiles'].forEach(function(id){
-    $(id).innerHTML = opts;
-  });
-}
+  // ========== الحضور ==========
+  let attendance = [];
+  async function renderAttendance(){
+    const tbody = document.getElementById("tblAttendance");
+    tbody.innerHTML = attendance.map((a,i)=>{
+      const stu = students.find(s=>s.id===a.student_id);
+      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${a.date}</td><td>${a.period}</td><td>${a.status}</td></tr>`;
+    }).join("");
+  }
+  document.getElementById("addAttendance").onclick = async ()=>{
+    const student_id = document.getElementById("selStudentA").value;
+    const date = document.getElementById("dateA").value;
+    const status = document.getElementById("statusA").value;
+    const period = parseInt(document.getElementById("periodA").value,10);
+    let { data } = await sb.from("attendance_entries").insert({ student_id,date,status,period }).select();
+    if(data){ attendance.push(data[0]); renderAttendance(); }
+  };
 
-/* ========= الحضور ========= */
-function renderAttendance(){
-  var html = state.attendance.map(function(r,i){
-    var stu = state.students.find(function(s){return s.id===r.student_id;});
-    return '<tr>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+(stu?escapeHtml(stu.name):'—')+'</td>'+
-      '<td>'+r.date+'</td>'+
-      '<td>'+(r.period||'')+'</td>'+
-      '<td>'+mapStatus(r.status)+'</td>'+
-      '<td>'+(r.notes||'')+'</td>'+
-      '<td><button class="btn warn" data-del-a="'+r.id+'">حذف</button></td>'+
-    '</tr>';
-  }).join('');
-  $('tblA').innerHTML = html;
-  Array.prototype.forEach.call(document.querySelectorAll('[data-del-a]'), function(b){
-    b.onclick = function(){
-      var id = b.getAttribute('data-del-a');
-      state.attendance = state.attendance.filter(function(x){return x.id!==id;});
-      saveLocal(); renderAttendance();
-    };
-  });
-}
-$('btnAddA').onclick = function(){
-  var st = $('selStudentA').value;
-  if(!st){ toast('اختر الطالب'); return; }
-  var date = $('inDateA').value || today();
-  var status = $('selStatusA').value;
-  var period = parseInt($('selPeriodA').value,10) || 1;
-  var notes = $('inNotesA').value.trim();
-  state.attendance.push({ id:genId(), student_id:st, date:date, status:status, period:period, notes:notes });
-  saveLocal(); renderAttendance();
-};
+  // ========== السلوك ==========
+  let behavior = [];
+  async function renderBehavior(){
+    const tbody = document.getElementById("tblBehavior");
+    tbody.innerHTML = behavior.map((b,i)=>{
+      const stu = students.find(s=>s.id===b.student_id);
+      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${b.date}</td><td>${b.period}</td><td>${b.type}</td></tr>`;
+    }).join("");
+  }
+  document.getElementById("addBehavior").onclick = async ()=>{
+    const student_id = document.getElementById("selStudentB").value;
+    const date = document.getElementById("dateB").value;
+    const type = document.getElementById("typeB").value;
+    const period = parseInt(document.getElementById("periodB").value,10);
+    let { data } = await sb.from("behavior").insert({ student_id,date,type,period }).select();
+    if(data){ behavior.push(data[0]); renderBehavior(); }
+  };
 
-/* ========= السلوك ========= */
-function renderBehavior(){
-  var html = state.behavior.map(function(r,i){
-    var stu = state.students.find(function(s){return s.id===r.student_id;});
-    return '<tr>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+(stu?escapeHtml(stu.name):'—')+'</td>'+
-      '<td>'+r.date+'</td>'+
-      '<td>'+(r.period||'')+'</td>'+
-      '<td>'+(r.type==='positive'?'إيجابي':'سلبي')+'</td>'+
-      '<td>'+(r.points||0)+'</td>'+
-      '<td>'+(r.notes||'')+'</td>'+
-      '<td><button class="btn warn" data-del-b="'+r.id+'">حذف</button></td>'+
-    '</tr>';
-  }).join('');
-  $('tblB').innerHTML = html;
-  Array.prototype.forEach.call(document.querySelectorAll('[data-del-b]'), function(b){
-    b.onclick = function(){
-      var id = b.getAttribute('data-del-b');
-      state.behavior = state.behavior.filter(function(x){return x.id!==id;});
-      saveLocal(); renderBehavior();
-    };
-  });
-}
-$('btnAddB').onclick = function(){
-  var st = $('selStudentB').value;
-  if(!st){ toast('اختر الطالب'); return; }
-  var date = $('inDateB').value || today();
-  var type = $('selTypeB').value;
-  var period = parseInt($('selPeriodB').value,10) || 1;
-  var points = parseInt($('inPointsB').value||'0',10);
-  var notes = $('inNotesB').value.trim();
-  state.behavior.push({ id:genId(), student_id:st, date:date, type:type, period:period, points:points, notes:notes });
-  saveLocal(); renderBehavior();
-};
+  // ========== الدرجات ==========
+  let grades = [];
+  async function renderGrades(){
+    const tbody = document.getElementById("tblGrades");
+    tbody.innerHTML = grades.map((g,i)=>{
+      const stu = students.find(s=>s.id===g.student_id);
+      return `<tr><td>${i+1}</td><td>${stu?stu.name:""}</td><td>${g.item}</td><td>${g.score}</td></tr>`;
+    }).join("");
+  }
+  document.getElementById("addGrade").onclick = async ()=>{
+    const student_id = document.getElementById("selStudentG").value;
+    const item = document.getElementById("itemG").value;
+    const score = parseFloat(document.getElementById("scoreG").value);
+    let { data } = await sb.from("grades").insert({ student_id,item,score }).select();
+    if(data){ grades.push(data[0]); renderGrades(); }
+  };
 
-/* ========= الدرجات (مختصر) ========= */
-function renderGrades(){
-  var html = state.grades.map(function(r,i){
-    var stu = state.students.find(function(s){return s.id===r.student_id;});
-    return '<tr>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+(stu?escapeHtml(stu.name):'—')+'</td>'+
-      '<td>'+mapItem(r.item)+'</td>'+
-      '<td>'+r.score+'</td>'+
-      '<td>'+(r.notes||'')+'</td>'+
-      '<td><button class="btn warn" data-del-g="'+r.id+'">حذف</button></td>'+
-    '</tr>';
-  }).join('');
-  $('tblG').innerHTML = html;
-  Array.prototype.forEach.call(document.querySelectorAll('[data-del-g]'), function(b){
-    b.onclick = function(){
-      var id = b.getAttribute('data-del-g');
-      state.grades = state.grades.filter(function(x){return x.id!==id;});
-      saveLocal(); renderGrades();
-    };
-  });
-}
-$('btnAddG').onclick = function(){
-  var st = $('selStudentG').value;
-  if(!st){ toast('اختر الطالب'); return; }
-  var item = $('selItemG').value;
-  var score = parseFloat($('inScoreG').value||'0');
-  var notes = $('inNotesG').value.trim();
-  state.grades.push({ id:genId(), student_id:st, item:item, score:score, notes:notes });
-  saveLocal(); renderGrades();
-};
-
-/* ========= التقارير ========= */
-$('btnPrintR').onclick = function(){
-  var sid = $('selStudentR').value;
-  if(!sid){ toast('اختر الطالب'); return; }
-  var stu = state.students.find(function(s){return s.id===sid;});
-  var msg = $('inReportMsg').value || '—';
-  var html = '<h3>تقرير متابعة</h3>'+
-             '<p><b>الطالب:</b> '+escapeHtml(stu.name)+' — '+(stu.classroom||'')+'</p>'+
-             '<p>'+escapeHtml(msg)+'</p>';
-  $('reportPreview').style.display='block';
-  $('reportPreview').innerHTML = html;
-  window.print();
-};
-
-/* ========= المرفقات + Supabase ========= */
-function supaReady(){
-  var u = (state.settings||{}).supabaseUrl||'';
-  var k = (state.settings||{}).supabaseAnon||'';
-  if(!u || !k) return false;
-  try{ sb = supabase.createClient(u,k); return true; }catch(e){ sb=null; return false; }
-}
-async function ensureBucket(){
-  if(!supaReady()) return;
-  try{
-    var r = await sb.storage.listBuckets();
-    var ok = (r.data||[]).some(function(b){return b.name==='student-docs';});
-    if(!ok){ await sb.storage.createBucket('student-docs',{public:true}); }
-  }catch(e){ console.log('bucket',e); }
-}
-async function ensureStudentOnCloud(stu){
-  if(!supaReady() || !stu) return;
-  try{
-    var q = await sb.from('students').select('id').eq('id',stu.id).maybeSingle();
-    if(!q.data){ await sb.from('students').insert({id:stu.id, name:stu.name, grade:stu.classroom, section:stu.classroom}); }
-  }catch(e){ console.log('ensure student',e); }
-}
-function renderFiles(){
-  var html = state.files.map(function(f,i){
-    return '<tr>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+escapeHtml(f.name)+'</td>'+
-      '<td>'+humanSize(f.size)+'</td>'+
-      '<td>'+ (f.created_at||'') +'</td>'+
-      '<td>'+(f.url?('<a href="'+f.url+'" target="_blank">فتح</a>'):'—')+'</td>'+
-      '<td><button class="btn warn" data-del-file="'+(f.id||'')+'">حذف</button></td>'+
-    '</tr>';
-  }).join('');
-  $('tblFiles').innerHTML = html;
-  Array.prototype.forEach.call(document.querySelectorAll('[data-del-file]'), function(b){
-    b.onclick = function(){
-      var id=b.getAttribute('data-del-file');
-      state.files = state.files.filter(function(x){return (x.id||'')!==id;});
-      saveLocal(); renderFiles();
-    };
-  });
-}
-$('btnUpload').onclick = async function(){
-  var sid = $('selStudentFiles').value;
-  var stu = state.students.find(function(s){return s.id===sid;});
-  var f = $('inFile').files[0];
-  if(!sid || !f){ toast('اختر الطالب والملف'); return; }
-  // محليًا نسجّل فقط، وإن توفرت سوبابيس نرفع
-  var entry = { id:genId(), student_id:sid, name:f.name, size:f.size, created_at:now() };
-  try{
-    if(supaReady()){
-      await ensureBucket(); await ensureStudentOnCloud(stu);
-      var path = sid+'/'+Date.now()+'_'+sanitizeName(f.name);
-      var up = await sb.storage.from('student-docs').upload(path, f, { upsert:false });
-      if(!up.error){
-        var pub = sb.storage.from('student-docs').getPublicUrl(path);
-        entry.url = (pub.data && pub.data.publicUrl) || '';
-        // اختياري: سجّل في جدول attachments إن وُجد
-        try{
-          await sb.from('attachments').insert({
-            id: entry.id, student_id: sid, name: f.name, size: f.size, url: entry.url, created_at: new Date().toISOString()
-          });
-        }catch(_){}
-      }
+  // ========== المرفقات ==========
+  document.getElementById("uploadFile").onclick = async ()=>{
+    const sid = document.getElementById("selStudentF").value;
+    const file = document.getElementById("fileInput").files[0];
+    if(!file) return;
+    const path = sid+"/"+Date.now()+"_"+file.name;
+    let { error } = await sb.storage.from("student-docs").upload(path,file);
+    if(!error){
+      const url = sb.storage.from("student-docs").getPublicUrl(path).data.publicUrl;
+      document.getElementById("fileList").innerHTML += `<li><a href="${url}" target="_blank">${file.name}</a></li>`;
     }
-  }catch(e){ console.log('upload',e); }
-  state.files.push(entry);
-  saveLocal(); renderFiles();
-};
+  };
 
-/* ========= الإعدادات ========= */
-$('btnSaveSettings').onclick = function(){
-  state.settings.supabaseUrl = $('inSupabaseUrl').value.trim();
-  state.settings.supabaseAnon = $('inSupabaseAnon').value.trim();
-  saveLocal(); toast('حُفظت الإعدادات'); ensureBucket();
-};
-$('btnClearData').onclick = function(){
-  if(!confirm('متأكد من حذف كل البيانات المحلية؟')) return;
-  localStorage.removeItem(LS_KEY);
-  location.reload();
-};
-
-/* ========= مزامنة (شكلية) ========= */
-$('btnSyncPull').onclick = function(){
-  // مكانها سوبابيس لو أردت لاحقًا. حاليًا فقط من LocalStorage (تم).
-  toast('الوضع الحالي محلي. لا توجد مزامنة سحابية بدون مفاتيح Supabase.');
-};
-$('btnSyncPush').onclick = function(){
-  toast('الوضع الحالي محلي. لا توجد مزامنة سحابية بدون مفاتيح Supabase.');
-};
-
-/* ========= أدوات مساعدة ========= */
-function mapStatus(s){
-  return {present:'حاضر',absent:'غائب',late:'متأخر',excused:'مستأذن'}[s] || s;
-}
-function mapItem(x){
-  return {
-    participation:'مشاركة',homework:'واجبات',tasks:'مهام أدائية',quiz:'اختبار قصير',final:'اختبار نهائي'
-  }[x] || x;
-}
-function genId(){ return 'id'+Math.random().toString(36).slice(2)+Date.now().toString(36); }
-function today(){ var d=new Date(); return d.toISOString().slice(0,10); }
-function now(){ return new Date().toISOString().replace('T',' ').slice(0,19); }
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);}); }
-function humanSize(n){ if(!n&&n!==0) return '—'; var u=['B','KB','MB','GB']; var i=0; while(n>1024 && i<u.length-1){ n/=1024;i++; } return n.toFixed( (i?1:0) )+' '+u[i]; }
-function sanitizeName(s){ return (s||'').replace(/[^\u0600-\u06FF\w.\-]+/g,'_'); }
-
-/* ========= إقلاع ========= */
-(function boot(){
-  loadLocal();
-  $('inSupabaseUrl').value = (state.settings||{}).supabaseUrl||'';
-  $('inSupabaseAnon').value = (state.settings||{}).supabaseAnon||'';
-  refreshAll();
-  ensureBucket(); // إن وُجدت مفاتيح سوبابيس
-})();
+  // بدء التشغيل
+  loadStudents();
   </script>
 </body>
 </html>
