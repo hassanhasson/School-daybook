@@ -1,491 +1,227 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>School Daybook — Supabase (No-Auth)</title>
-<link rel="icon" href="favicon.png" type="image/png"/>
-<style>
-  :root{
-    --bg:#0f172a; --ink:#0b1220; --mut:#556; --brand:#0ea5e9; --chip:#e2e8f0;
-    --card:#f8fafc; --row:#ffffff; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
-  }
-  *{box-sizing:border-box} body{margin:0;font-family:"Noto Sans Arabic",system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f1f5f9;color:#111}
-  .bar{background:var(--bg);color:#fff;padding:16px}
-  .wrap{max-width:1120px;margin:auto}
-  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-  .tab-btn{border:0;background:#e2e8f0;color:#111;padding:10px 14px;border-radius:10px;cursor:pointer}
-  .tab-btn.active{background:var(--brand);color:#fff}
-  .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:12px 0}
-  .row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
-  input,select,button{font-size:15px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px}
-  input:focus,select:focus,button:focus{outline:2px solid var(--brand);outline-offset:1px}
-  .primary{background:var(--brand);color:#fff;border-color:var(--brand);cursor:pointer}
-  .ghost{background:#e2e8f0}
-  .hidden{display:none!important}
-  table{width:100%;border-collapse:collapse;background:var(--row)}
-  th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:right}
-  th{background:#f3f4f6}
-  .pill{background:var(--chip);padding:2px 8px;border-radius:999px;font-size:12px;color:#334155}
-  .muted{color:#64748b}
-  .right{margin-inline-start:auto}
-  .badge-ok{background:var(--ok);color:#fff}
-  .toast{position:fixed;inset-inline-end:12px;inset-block-end:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
-  .toast > div{background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:.95}
-  .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>School Daybook — الطلاب</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='10' fill='%230b3954'/%3E%3Ctext x='50%25' y='52%25' text-anchor='middle' dominant-baseline='central' font-size='28' font-family='Arial' fill='white'%3ESD%3C/text%3E%3C/svg%3E">
 
-<!-- Supabase CDN (آمن حتى لو لم يحمل؛ الكود أدناه يتعامل مع ذلك) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--ink:#0f172a;--muted:#64748b;--brand:#0b3954;--good:#16a34a;--bad:#dc2626}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Arabic",system-ui,Segoe UI,Arial}
+    header{background:var(--brand);color:#fff;padding:16px 20px;font-weight:800}
+    .wrap{max-width:1100px;margin:14px auto;padding:0 12px}
+    .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:14px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    input,select,button{font-size:15px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
+    button{cursor:pointer}
+    .btn{background:#e2e8f0}
+    .btn.primary{background:#0b3954;color:#fff;border-color:#0b3954}
+    .btn.danger{background:#dc2626;color:#fff;border-color:#dc2626}
+    .muted{color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eef}
+    th{background:#f3f4f6;text-align:right}
+    .pill{display:inline-block;background:#e9eef3;border-radius:999px;padding:4px 10px}
+    .grow{flex:1}
+  </style>
+
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="bar">
-    <div class="wrap" style="display:flex;gap:10px;align-items:center">
-      <strong>School Daybook — Supabase</strong>
-      <span id="cloudState" class="pill">Sync: no-auth mode</span>
-      <button id="btnSync" type="button" class="primary" style="margin-inline-start:auto">↕ Sync</button>
-    </div>
-  </header>
-
+  <header>School Daybook — تبويب الطلاب</header>
   <main class="wrap">
-    <nav class="nav">
-      <button type="button" class="tab-btn" data-tab="students">الطلاب</button>
-      <button type="button" class="tab-btn" data-tab="attendance">الحضور</button>
-      <button type="button" class="tab-btn" data-tab="behavior">السلوك</button>
-      <button type="button" class="tab-btn" data-tab="grades">الدرجات</button>
-      <button type="button" class="tab-btn" data-tab="reports">التقارير</button>
-      <button type="button" class="tab-btn" data-tab="attachments">المرفقات</button>
-      <button type="button" class="tab-btn" data-tab="settings">إعدادات</button>
-    </nav>
 
-    <!-- الطلاب -->
-    <section id="students" class="tab-pane card">
-      <h3>إدارة الطلاب</h3>
+    <section class="card">
+      <h3 style="margin:4px 0 10px">إضافة طالب</h3>
       <div class="row">
-        <input id="inStudentClass" placeholder="الصف/الشعبة: مثال ٦/أ" />
-        <input id="inStudentName"  placeholder="اسم الطالب" />
-        <button id="btnAddStudent" class="primary">إضافة</button>
-        <span class="pill">* الترتيب أبجدي عربي في العرض فقط</span>
+        <input id="name" placeholder="اسم الطالب" class="grow"/>
+        <input id="klass" placeholder="الصف/الشعبة (مثال: ٦/أ)" style="min-width:180px"/>
+        <button id="add" class="btn primary">إضافة</button>
+        <input id="importFile" type="file" accept=".csv,.txt" class="hidden"/>
+        <button id="importBtn" class="btn">استيراد CSV</button>
+        <button id="exportBtn" class="btn">تصدير CSV</button>
       </div>
-      <div class="row" style="margin-top:6px">
-        <button id="btnPull"  class="ghost">سحب من السحابة</button>
-        <button id="btnPush"  class="ghost">رفع للسحابة</button>
-        <button id="btnExport" class="ghost">تصدير JSON</button>
-        <button id="btnImport" class="ghost">استيراد JSON</button>
-        <input id="fileImport" type="file" accept="application/json" class="hidden"/>
-        <button id="btnClearLocal" class="ghost" style="color:#b91c1c;border-color:#fecaca">مسح محلي</button>
+      <div class="muted" style="margin-top:6px">* الحقول: الاسم + الصف فقط. الحفظ يتم مباشرة على السحابة.</div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:4px 0 10px">قائمة الطلاب</h3>
+      <div class="row" style="margin-bottom:8px">
+        <input id="q" class="grow" placeholder="بحث بالاسم (أتركه فارغ = الكل)"/>
+        <select id="filterClass" style="min-width:180px">
+          <option value="">الكل (كل الصفوف)</option>
+        </select>
+        <span class="pill" id="count">—</span>
       </div>
 
-      <div class="card">
+      <div style="overflow:auto">
         <table>
-          <thead><tr><th>#</th><th>الاسم</th><th>الصف</th><th>إجراءات</th></tr></thead>
-          <tbody id="tblStudents"></tbody>
+          <thead>
+            <tr>
+              <th style="width:60px">#</th>
+              <th>الاسم</th>
+              <th style="width:200px">الصف</th>
+              <th style="width:220px">مجموع الدرجات (بدون النهائي)</th>
+              <th style="width:220px">مجموع نقاط السلوك/المواظبة</th>
+              <th style="width:120px">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="6" class="muted">جاري التحميل…</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <!-- الحضور -->
-    <section id="attendance" class="tab-pane card hidden">
-      <h3>الحضور</h3>
-      <div class="grid-2">
-        <select id="attStudent"></select>
-        <input id="attDate" type="date"/>
-        <select id="attLesson">
-          <option value="">رقم الحصة…</option>
-          <option>1</option><option>2</option><option>3</option><option>4</option>
-          <option>5</option><option>6</option><option>7</option>
-        </select>
-        <select id="attStatus">
-          <option value="present">حاضر</option>
-          <option value="late">متأخر</option>
-          <option value="excused">مستأذن</option>
-          <option value="absent">غائب</option>
-        </select>
-        <button id="btnAttAdd" class="primary">تسجيل</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>الحالة</th></tr></thead>
-        <tbody id="tblAtt"></tbody></table>
-      </div>
-    </section>
-
-    <!-- السلوك -->
-    <section id="behavior" class="tab-pane card hidden">
-      <h3>السلوك</h3>
-      <div class="grid-2">
-        <select id="behStudent"></select>
-        <input id="behDate" type="date"/>
-        <select id="behLesson">
-          <option value="">رقم الحصة…</option>
-          <option>1</option><option>2</option><option>3</option><option>4</option>
-          <option>5</option><option>6</option><option>7</option>
-        </select>
-        <select id="behType">
-          <option value="positive">إيجابي</option>
-          <option value="negative">سلبي</option>
-        </select>
-        <input id="behNote" placeholder="ملاحظة"/>
-        <button id="btnBehAdd" class="primary">إضافة</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>#</th><th>الطالب</th><th>التاريخ</th><th>الحصة</th><th>النوع</th><th>ملاحظة</th></tr></thead>
-        <tbody id="tblBeh"></tbody></table>
-      </div>
-    </section>
-
-    <!-- الدرجات (هيكل مبسّط) -->
-    <section id="grades" class="tab-pane card hidden">
-      <h3>الدرجات</h3>
-      <div class="grid-2">
-        <select id="grStudent"></select>
-        <select id="grKind">
-          <option value="participation">مشاركة (10)</option>
-          <option value="homework">واجبات (10)</option>
-          <option value="performance">مهام أدائية (20)</option>
-          <option value="quiz">اختبار قصير (20)</option>
-          <option value="final">نهائي (40)</option>
-        </select>
-        <input id="grScore" type="number" min="0" step="0.5" placeholder="الدرجة"/>
-        <button id="btnGrAdd" class="primary">حفظ</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>#</th><th>الطالب</th><th>نوع</th><th>درجة</th></tr></thead>
-          <tbody id="tblGr"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- التقارير (ملاحظة/خطاب سريع) -->
-    <section id="reports" class="tab-pane card hidden">
-      <h3>توليد خطاب تنبيه/ثناء</h3>
-      <div class="grid-2">
-        <select id="rpStudent"></select>
-        <select id="rpKind">
-          <option value="positive">ثناء على الانضباط/التحصيل</option>
-          <option value="warning">تنبيه بسبب الغياب/السلوك</option>
-        </select>
-        <textarea id="rpBody" rows="4" placeholder="النص المخصص (اختياري)" style="grid-column:1/-1;padding:10px;border:1px solid #cbd5e1;border-radius:10px"></textarea>
-        <button id="btnRpPrint" class="primary">طباعة التقرير</button>
-      </div>
-      <iframe id="printFrame" class="hidden"></iframe>
-    </section>
-
-    <!-- المرفقات -->
-    <section id="attachments" class="tab-pane card hidden">
-      <h3>مرفقات الطالب</h3>
-      <div class="row">
-        <select id="attchStudent"></select>
-        <input id="filePick" type="file"/>
-        <button id="btnUpload" class="primary">رفع</button>
-        <button id="btnListFiles" class="ghost">تحديث قائمة الملفات</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>#</th><th>الاسم/النوع</th><th>الحجم</th><th>التاريخ</th><th>رابط</th><th>حذف</th></tr></thead>
-          <tbody id="tblFiles"></tbody>
-        </table>
-        <p class="muted">يرفع إلى <b>Storage</b> في بكت اسمه <code>student-docs</code>. لو ظهر “Bucket not found” أنشئه من Supabase.</p>
-      </div>
-    </section>
-
-    <!-- إعدادات -->
-    <section id="settings" class="tab-pane card hidden">
-      <h3>إعدادات</h3>
-      <div class="grid-2">
-        <label>رابط Supabase:
-          <input id="cfgUrl" placeholder="https://xxxxx.supabase.co"/>
-        </label>
-        <label>Anon Key:
-          <input id="cfgKey" placeholder="طويل…"/>
-        </label>
-        <button id="btnCfgSave" class="primary">حفظ المفاتيح</button>
-        <button id="btnCfgClear" class="ghost">مسح التخزين المحلي</button>
-      </div>
-      <p class="muted">المفاتيح تحفظ محليًا فقط في جهازك. يوجد مفاتيح افتراضية أدناه.</p>
-    </section>
   </main>
 
-  <div id="toaster" class="toast"></div>
+  <script>
+  (function(){
+    // === مفاتيح Supabase (تقدر تغيّرها لاحقًا) ===
+    const SUPABASE_URL  = "https://alamidjtlxuquvjvvcac.supabase.co";
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-<script>
-(() => {
-  // -------------- أدوات مساعدة --------------
-  const $  = (s,ctx=document)=>ctx.querySelector(s);
-  const $$ = (s,ctx=document)=>Array.from(ctx.querySelectorAll(s));
-  const toastBox = $('#toaster');
-  const toast = (msg,type='info')=>{
-    const n = document.createElement('div');
-    n.textContent = msg;
-    if(type==='ok') n.style.background = '#16a34a';
-    if(type==='warn') n.style.background = '#f59e0b';
-    if(type==='err') n.style.background = '#b91c1c';
-    toastBox.appendChild(n); setTimeout(()=>n.remove(), 3500);
-  };
-  const collAr = new Intl.Collator('ar',{sensitivity:'base'});
+    // DOM
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const collAr = new Intl.Collator('ar', {sensitivity:'base'});
+    const tbody = $('#tbody'), countEl = $('#count');
 
-  // -------------- تبويبات (يعمل دائمًا) --------------
-  const showTab = (name,save=true)=>{
-    $$('.tab-pane').forEach(p=>p.classList.add('hidden'));
-    $('#'+name)?.classList.remove('hidden');
-    $$('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-    if(save) localStorage.setItem('daybook_last_tab', name);
-  };
-  $$('.tab-btn').forEach(b=>{
-    b.type='button';
-    b.addEventListener('click', e=>showTab(b.dataset.tab));
-    b.addEventListener('pointerdown', e=>{ if(e.pointerType==='touch') showTab(b.dataset.tab); }, {passive:true});
-  });
-  showTab(localStorage.getItem('daybook_last_tab') || 'students', false);
+    // حالة
+    let students = [];      // من جدول students
+    let metrics  = {};      // من view student_metrics {student_id: {coursework_sum, conduct_points}}
+    let classes  = new Set();
 
-  // -------------- تخزين محلي --------------
-  const LS = {
-    put:(k,v)=>localStorage.setItem(k, JSON.stringify(v)),
-    get:(k,def)=>{ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def;}catch{ return def; } },
-    del:(k)=>localStorage.removeItem(k)
-  };
-  const DB = {
-    students: LS.get('daybook_students_v1', []),
-    attendance: LS.get('daybook_att_v1', []),
-    behavior: LS.get('daybook_beh_v1', []),
-    grades: LS.get('daybook_gr_v1', []),
-  };
-  const saveAll = ()=>{
-    LS.put('daybook_students_v1', DB.students);
-    LS.put('daybook_att_v1', DB.attendance);
-    LS.put('daybook_beh_v1', DB.behavior);
-    LS.put('daybook_gr_v1', DB.grades);
-  };
+    // تحميل الطلاب + المقاييس
+    async function loadAll() {
+      // students
+      const {data:stu, error:err1} = await sb.from('students').select('id,name,class_name');
+      if (err1) { console.error(err1); alert('قراءة الطلاب فشلت: '+err1.message); return; }
+      students = (stu||[]).slice().sort((a,b)=> collAr.compare(a.name||'', b.name||''));
+      // classes
+      classes = new Set(students.map(s=>s.class_name).filter(Boolean));
 
-  // -------------- Supabase (محمي من الأعطال) --------------
-  const DEFAULT_URL = 'https://alamidjtlxuquvjvvcac.supabase.co';
-  const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU';
-  const cfg = {
-    url: LS.get('daybook_cfg_url', DEFAULT_URL),
-    key: LS.get('daybook_cfg_key', DEFAULT_KEY),
-  };
-  $('#cfgUrl').value = cfg.url; $('#cfgKey').value = cfg.key;
+      // metrics view
+      const {data:met, error:err2} = await sb.from('student_metrics').select('*');
+      if (err2) { console.error(err2); alert('قراءة المقاييس فشلت: '+err2.message); return; }
+      metrics = {};
+      (met||[]).forEach(m => metrics[m.student_id] = {coursework_sum: Number(m.coursework_sum)||0, conduct_points: Number(m.conduct_points)||0});
 
-  let sb = null;
-  try{
-    if (window.supabase?.createClient) {
-      sb = window.supabase.createClient(cfg.url, cfg.key);
-      $('#cloudState').textContent = 'Sync: client ready';
-      $('#cloudState').classList.add('badge-ok');
-      console.log('Supabase client ready');
-    } else {
-      $('#cloudState').textContent = 'Sync: library not loaded';
+      fillClassFilter();
+      render();
     }
-  }catch(e){
-    console.warn('Supabase init failed', e);
-    $('#cloudState').textContent = 'Sync: init failed';
-  }
 
-  $('#btnCfgSave').addEventListener('click', ()=>{
-    LS.put('daybook_cfg_url', $('#cfgUrl').value.trim());
-    LS.put('daybook_cfg_key', $('#cfgKey').value.trim());
-    toast('تم حفظ الإعدادات. أعد تحميل الصفحة.', 'ok');
-  });
-  $('#btnCfgClear').addEventListener('click', ()=>{
-    localStorage.clear();
-    toast('تم مسح التخزين المحلي. حدّث الصفحة.', 'warn');
-  });
+    // تعبئة فلتر الصف
+    function fillClassFilter(){
+      const sel = $('#filterClass');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">الكل (كل الصفوف)</option>' +
+        Array.from(classes).sort((a,b)=>collAr.compare(a,b)).map(c=>`<option value="${c}">${c}</option>`).join('');
+      if (Array.from(classes).includes(cur)) sel.value = cur;
+    }
 
-  // -------------- الطلاب --------------
-  const renderStudents = ()=>{
-    const tbody = $('#tblStudents'); tbody.innerHTML='';
-    const list = [...DB.students].sort((a,b)=>collAr.compare(a.name,b.name));
-    list.forEach((s,idx)=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${idx+1}</td>
-        <td>${s.name}</td>
-        <td>${s.class||''}</td>
-        <td>
-          <button class="ghost" data-act="del" data-id="${s.id}" style="color:#b91c1c">حذف</button>
-        </td>`;
-      tbody.appendChild(tr);
+    // فلترة + رسم
+    function render(){
+      const q = ($('#q').value||'').trim();
+      const klass = $('#filterClass').value||'';
+      let rows = students.slice();
+
+      if (klass) rows = rows.filter(s => (s.class_name||'') === klass);
+      if (q) rows = rows.filter(s => (s.name||'').includes(q));
+
+      rows = rows.sort((a,b)=> collAr.compare(a.name||'', b.name||''));
+
+      countEl.textContent = `العدد: ${rows.length}`;
+
+      if (!rows.length){
+        tbody.innerHTML = '<tr><td colspan="6" class="muted">لا نتائج</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((s, i) => {
+        const m = metrics[s.id] || {coursework_sum:0, conduct_points:0};
+        const cp = m.conduct_points;
+        const cpClass = cp >= 0 ? 'style="color:#16a34a;font-weight:700"' : 'style="color:#dc2626;font-weight:700"';
+        return `
+          <tr>
+            <td>${i+1}</td>
+            <td>${escapeHtml(s.name||'')}</td>
+            <td>${escapeHtml(s.class_name||'')}</td>
+            <td>${m.coursework_sum.toFixed(1)}</td>
+            <td ${cpClass}>${cp.toFixed(1)}</td>
+            <td><button class="btn danger" data-del="${s.id}">حذف</button></td>
+          </tr>`;
+      }).join('');
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
+    // إضافة طالب
+    $('#add').addEventListener('click', async ()=>{
+      const name = ($('#name').value||'').trim();
+      const klass = ($('#klass').value||'').trim();
+      if (!name){ $('#name').focus(); return; }
+      const { data, error } = await sb.from('students').insert({ name, class_name: klass||null }).select().single();
+      if (error){ alert('فشل الإضافة: '+error.message); return; }
+      $('#name').value = ''; $('#klass').value='';
+      await loadAll();
     });
-    // تحديث قوائم الاختيار في الصفحات الأخرى
-    const opts = list.map(s=>`<option value="${s.id}">${s.name} (${s.class||'—'})</option>`).join('');
-    ['attStudent','behStudent','grStudent','rpStudent','attchStudent'].forEach(id=>{
-      const el = document.getElementById(id);
-      if (el){ el.innerHTML = `<option value="">اختر الطالب</option>${opts}`; }
+
+    // حذف طالب
+    tbody.addEventListener('click', async (e)=>{
+      const id = e.target?.dataset?.del; if (!id) return;
+      if (!confirm('حذف الطالب نهائيًا؟')) return;
+      const { error } = await sb.from('students').delete().eq('id', id);
+      if (error){ alert('فشل الحذف: '+error.message); return; }
+      await loadAll();
     });
-  };
 
-  $('#btnAddStudent').addEventListener('click', ()=>{
-    const name = $('#inStudentName').value.trim();
-    const clas = $('#inStudentClass').value.trim();
-    if(!name){ toast('اكتب اسم الطالب','warn'); return; }
-    DB.students.push({ id: crypto.randomUUID(), name, class: clas });
-    saveAll(); renderStudents();
-    $('#inStudentName').value=''; $('#inStudentClass').value='';
-  });
+    // بحث/فلترة
+    $('#q').addEventListener('input', render);
+    $('#filterClass').addEventListener('change', render);
 
-  $('#tblStudents').addEventListener('click', (e)=>{
-    const btn = e.target.closest('button[data-act="del"]'); if(!btn) return;
-    const id = btn.dataset.id;
-    DB.students = DB.students.filter(s=>s.id!==id);
-    saveAll(); renderStudents();
-  });
-
-  $('#btnExport').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'daybook_backup.json'; a.click();
-  });
-  $('#btnImport').addEventListener('click', ()=>$('#fileImport').click());
-  $('#fileImport').addEventListener('change', (e)=>{
-    const f = e.target.files?.[0]; if(!f) return;
-    const rd = new FileReader();
-    rd.onload = ()=>{ try{
-      const data = JSON.parse(rd.result);
-      Object.assign(DB, data); saveAll(); renderAll(); toast('تم الاستيراد','ok');
-    }catch{ toast('ملف غير صالح','err'); } };
-    rd.readAsText(f);
-  });
-  $('#btnClearLocal').addEventListener('click', ()=>{
-    if(confirm('حذف كل البيانات المحلية؟')){ localStorage.clear(); location.reload(); }
-  });
-
-  // -------------- الحضور --------------
-  const renderAttendance = ()=>{
-    const tb = $('#tblAtt'); tb.innerHTML='';
-    DB.attendance.forEach((r,i)=>{
-      const s = DB.students.find(x=>x.id===r.sid);
-      const name = s? s.name : '—';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${name}</td><td>${r.date||''}</td><td>${r.lesson||''}</td><td>${r.status}</td>`;
-      tb.appendChild(tr);
+    // استيراد CSV (عمودين: name,class_name) سطر لكل طالب
+    $('#importBtn').addEventListener('click', ()=> $('#importFile').click());
+    $('#importFile').addEventListener('change', async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return;
+      const text = await f.text();
+      const rows = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      if (!rows.length) return;
+      // تخطي هيدر محتمل
+      const guessHeader = rows[0].toLowerCase().includes('name') || rows[0].includes('الاسم');
+      const data = (guessHeader ? rows.slice(1) : rows).map(line=>{
+        const [name, klass] = line.split(',').map(x=> (x||'').trim());
+        return { name, class_name: klass||null };
+      }).filter(r=>r.name);
+      if (!data.length) return;
+      const { error } = await sb.from('students').insert(data);
+      if (error){ alert('فشل الاستيراد: '+error.message); return; }
+      $('#importFile').value = '';
+      await loadAll();
     });
-  };
-  $('#btnAttAdd').addEventListener('click', ()=>{
-    const sid = $('#attStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    DB.attendance.push({sid, date:$('#attDate').value, lesson:$('#attLesson').value, status:$('#attStatus').value});
-    saveAll(); renderAttendance(); toast('تم تسجيل الحضور','ok');
-  });
 
-  // -------------- السلوك --------------
-  const renderBehavior = ()=>{
-    const tb = $('#tblBeh'); tb.innerHTML='';
-    DB.behavior.forEach((r,i)=>{
-      const s = DB.students.find(x=>x.id===r.sid);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${s? s.name:'—'}</td><td>${r.date||''}</td><td>${r.lesson||''}</td><td>${r.type}</td><td>${r.note||''}</td>`;
-      tb.appendChild(tr);
+    // تصدير CSV
+    $('#exportBtn').addEventListener('click', ()=>{
+      const header = 'name,class_name,coursework_sum,conduct_points';
+      const lines = students.map(s=>{
+        const m = metrics[s.id] || {coursework_sum:0, conduct_points:0};
+        return `"${(s.name||'').replace(/"/g,'""')}","${(s.class_name||'').replace(/"/g,'""')}",${m.coursework_sum},${m.conduct_points}`;
+      });
+      const csv = [header, ...lines].join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'students.csv';
+      a.click();
     });
-  };
-  $('#btnBehAdd').addEventListener('click', ()=>{
-    const sid = $('#behStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    DB.behavior.push({sid, date:$('#behDate').value, lesson:$('#behLesson').value, type:$('#behType').value, note:$('#behNote').value.trim()});
-    saveAll(); renderBehavior(); toast('تم إضافة السلوك','ok');
-    $('#behNote').value='';
-  });
 
-  // -------------- الدرجات --------------
-  const renderGrades = ()=>{
-    const tb = $('#tblGr'); tb.innerHTML='';
-    DB.grades.forEach((r,i)=>{
-      const s = DB.students.find(x=>x.id===r.sid);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${s? s.name:'—'}</td><td>${r.kind}</td><td>${r.score}</td>`;
-      tb.appendChild(tr);
-    });
-  };
-  $('#btnGrAdd').addEventListener('click', ()=>{
-    const sid = $('#grStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    const score = Number($('#grScore').value);
-    if(Number.isNaN(score)) return toast('أدخل درجة صحيحة','warn');
-    DB.grades.push({sid, kind:$('#grKind').value, score});
-    saveAll(); renderGrades(); $('#grScore').value='';
-  });
-
-  // -------------- تقارير (طباعة) --------------
-  $('#btnRpPrint').addEventListener('click', ()=>{
-    const sid = $('#rpStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    const st = DB.students.find(s=>s.id===sid);
-    const kind = $('#rpKind').value;
-    const body = ($('#rpBody').value||'').trim();
-    const title = kind==='positive' ? 'خطاب ثناء' : 'تنبيه';
-    const msg = body || (kind==='positive'
-      ? `نثمن جهود الطالب/ ${st.name} في الانضباط والتحصيل.`
-      : `نرجو متابعة الطالب/ ${st.name} بسبب غياب/سلوك غير مناسب.`);
-    const html = `
-      <html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:"Noto Sans Arabic",system-ui;line-height:1.9;padding:24px}</style></head>
-      <body><h2>${title}</h2><p>${msg}</p><hr/><p>الطالب: ${st.name} — الصف: ${st.class||'—'}</p></body></html>`;
-    const w = window.open('','_blank'); w.document.write(html); w.document.close(); w.focus(); w.print();
-  });
-
-  // -------------- المرفقات (Storage) --------------
-  async function listFiles(){
-    const sid = $('#attchStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    if(!sb){ toast('السحابة غير جاهزة','warn'); return; }
-    const r = await sb.storage.from('student-docs').list(sid, {limit:100, sortBy:{column:'created_at', order:'desc'}});
-    const tb = $('#tblFiles'); tb.innerHTML='';
-    if(r.error){ toast(r.error.message,'err'); return; }
-    (r.data||[]).forEach((f,i)=>{
-      const { data:pub } = sb.storage.from('student-docs').getPublicUrl(`${sid}/${f.name}`);
-      const tr = document.createElement('tr');
-      const kb = (f.metadata?.size||0)/1024;
-      tr.innerHTML = `<td>${i+1}</td><td>${f.name}</td><td>${kb.toFixed(1)} KB</td>
-         <td>${(f.created_at||'').toString().slice(0,19).replace('T',' ')}</td>
-         <td><a href="${pub.publicUrl}" target="_blank">فتح/نسخ</a></td>
-         <td><button class="ghost" data-del="${f.name}" style="color:#b91c1c">حذف</button></td>`;
-      tb.appendChild(tr);
-    });
-  }
-  $('#btnListFiles').addEventListener('click', listFiles);
-
-  $('#btnUpload').addEventListener('click', async ()=>{
-    const sid = $('#attchStudent').value; if(!sid) return toast('اختر الطالب','warn');
-    const f = $('#filePick').files?.[0]; if(!f) return toast('اختر ملفًا','warn');
-    if(!sb){ toast('السحابة غير جاهزة','warn'); return; }
-    const path = `${sid}/${Date.now()}_${f.name}`;
-    const r = await sb.storage.from('student-docs').upload(path, f, {upsert:true});
-    if(r.error){ toast(r.error.message,'err'); return; }
-    toast('تم الرفع','ok'); listFiles();
-  });
-
-  $('#tblFiles').addEventListener('click', async (e)=>{
-    const btn = e.target.closest('button[data-del]'); if(!btn) return;
-    const sid = $('#attchStudent').value; const name = btn.dataset.del;
-    if(!sb) return toast('السحابة غير جاهزة','warn');
-    const r = await sb.storage.from('student-docs').remove([`${sid}/${name}`]);
-    if(r.error){ toast(r.error.message,'err'); return; }
-    toast('حُذف الملف','ok'); listFiles();
-  });
-
-  // -------------- Sync --------------
-  async function pullStudents(){
-    if(!sb){ toast('السحابة غير جاهزة','warn'); return; }
-    const {data, error} = await sb.from('students').select('id,name,class_name');
-    if(error){ toast(error.message,'err'); return; }
-    // دمج بسيط: أضف غير الموجودين فقط
-    const known = new Set(DB.students.map(s=>s.id));
-    (data||[]).forEach(r=>{
-      if(!known.has(r.id)) DB.students.push({id:r.id, name:r.name, class:r.class_name||''});
-    });
-    saveAll(); renderStudents(); toast('تم السحب','ok');
-  }
-  async function pushStudents(){
-    if(!sb){ toast('السحابة غير جاهزة','warn'); return; }
-    const rows = DB.students.map(s=>({id:s.id, name:s.name, class_name:s.class||null}));
-    const {error} = await sb.from('students').upsert(rows, {onConflict:'id'});
-    if(error){ toast(error.message,'err'); return; }
-    toast('تم الرفع','ok');
-  }
-  $('#btnPull').addEventListener('click', pullStudents);
-  $('#btnPush').addEventListener('click', pushStudents);
-  $('#btnSync').addEventListener('click', ()=>{ pullStudents().then(pushStudents); });
-
-  // -------------- رسم أولي --------------
-  function renderAll(){ renderStudents(); renderAttendance(); renderBehavior(); renderGrades(); }
-  renderAll();
-
-})();
-</script>
+    // تشغيل أولي
+    loadAll();
+  })();
+  </script>
 </body>
 </html>
