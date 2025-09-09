@@ -1,227 +1,509 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>School Daybook — الطلاب</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='10' fill='%230b3954'/%3E%3Ctext x='50%25' y='52%25' text-anchor='middle' dominant-baseline='central' font-size='28' font-family='Arial' fill='white'%3ESD%3C/text%3E%3C/svg%3E">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>School Daybook — Supabase</title>
 
-  <style>
-    :root{--bg:#f6f7fb;--card:#fff;--ink:#0f172a;--muted:#64748b;--brand:#0b3954;--good:#16a34a;--bad:#dc2626}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Arabic",system-ui,Segoe UI,Arial}
-    header{background:var(--brand);color:#fff;padding:16px 20px;font-weight:800}
-    .wrap{max-width:1100px;margin:14px auto;padding:0 12px}
-    .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:14px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input,select,button{font-size:15px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
-    button{cursor:pointer}
-    .btn{background:#e2e8f0}
-    .btn.primary{background:#0b3954;color:#fff;border-color:#0b3954}
-    .btn.danger{background:#dc2626;color:#fff;border-color:#dc2626}
-    .muted{color:var(--muted)}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #eef}
-    th{background:#f3f4f6;text-align:right}
-    .pill{display:inline-block;background:#e9eef3;border-radius:999px;padding:4px 10px}
-    .grow{flex:1}
-  </style>
+<!-- مكتبة Supabase v2 (ضرورية قبل أي كود يستخدم supabase) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
-  <!-- Supabase UMD -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f5f7fb; --ink:#111; --muted:#667; --card:#fff; --brand:#0a7; --brand-ink:#fff;
+  --danger:#c62828; --accent:#1976d2; --chip:#e8eef6;
+  font-family: "Noto Sans Arabic", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink)}
+header{background:#0e2b3a;color:#fff;padding:16px}
+.wrap{max-width:1140px;margin:0 auto;padding:12px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+nav button{border:0;background:#dde5ef;color:#122;padding:10px 14px;border-radius:12px;cursor:pointer}
+nav button.active{background:var(--accent);color:#fff}
+.card{background:var(--card);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 200px}
+input,select,button,textarea{padding:10px;border:1px solid #cfd6df;border-radius:10px;background:#fff;color:var(--ink)}
+button.primary{background:var(--brand);color:var(--brand-ink);border:0}
+button.danger{background:var(--danger);color:#fff;border:0}
+.badge{background:var(--chip);padding:6px 10px;border-radius:999px;font-size:12px}
+table{width:100%;border-collapse:collapse} th,td{padding:9px;border-bottom:1px solid #eef2f6} th{background:#f1f5fb;text-align:right}
+.actions button{margin-inline-start:6px}
+.hidden{display:none} .small{font-size:12px;color:var(--muted)} hr{border:0;border-top:1px dashed #dde}
+footer{padding:20px;text-align:center;color:#789} .kbd{font-family:monospace;background:#222;color:#fff;border-radius:6px;padding:0 6px}
+</style>
 </head>
 <body>
-  <header>School Daybook — تبويب الطلاب</header>
-  <main class="wrap">
 
-    <section class="card">
-      <h3 style="margin:4px 0 10px">إضافة طالب</h3>
-      <div class="row">
-        <input id="name" placeholder="اسم الطالب" class="grow"/>
-        <input id="klass" placeholder="الصف/الشعبة (مثال: ٦/أ)" style="min-width:180px"/>
-        <button id="add" class="btn primary">إضافة</button>
-        <input id="importFile" type="file" accept=".csv,.txt" class="hidden"/>
-        <button id="importBtn" class="btn">استيراد CSV</button>
-        <button id="exportBtn" class="btn">تصدير CSV</button>
-      </div>
-      <div class="muted" style="margin-top:6px">* الحقول: الاسم + الصف فقط. الحفظ يتم مباشرة على السحابة.</div>
-    </section>
+<header>
+  <div class="wrap row" style="align-items:center">
+    <div style="flex:1 1 auto">
+      <h2 style="margin:0">School Daybook — Supabase</h2>
+      <div class="small">كل تعديل يُحفظ سحابيًا مباشرة.</div>
+    </div>
+    <div><button id="btnSync" class="badge" title="تأكد من الاتصال">Sync ⟳</button></div>
+  </div>
+</header>
 
-    <section class="card">
-      <h3 style="margin:4px 0 10px">قائمة الطلاب</h3>
-      <div class="row" style="margin-bottom:8px">
-        <input id="q" class="grow" placeholder="بحث بالاسم (أتركه فارغ = الكل)"/>
-        <select id="filterClass" style="min-width:180px">
-          <option value="">الكل (كل الصفوف)</option>
-        </select>
-        <span class="pill" id="count">—</span>
-      </div>
+<main class="wrap">
+  <nav id="tabs">
+    <button data-tab="students" class="active">الطلاب</button>
+    <button data-tab="attendance">الحضور</button>
+    <button data-tab="behavior">السلوك</button>
+    <button data-tab="grades">الدرجات</button>
+    <button data-tab="reports">التقارير</button>
+    <button data-tab="attachments">المرفقات</button>
+    <button data-tab="settings">الإعدادات</button>
+  </nav>
 
-      <div style="overflow:auto">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:60px">#</th>
-              <th>الاسم</th>
-              <th style="width:200px">الصف</th>
-              <th style="width:220px">مجموع الدرجات (بدون النهائي)</th>
-              <th style="width:220px">مجموع نقاط السلوك/المواظبة</th>
-              <th style="width:120px">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="6" class="muted">جاري التحميل…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-  </main>
-
-  <script>
-  (function(){
-    // === مفاتيح Supabase (تقدر تغيّرها لاحقًا) ===
-    const SUPABASE_URL  = "https://alamidjtlxuquvjvvcac.supabase.co";
-    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-
-    // DOM
-    const $ = s => document.querySelector(s);
-    const $$ = s => Array.from(document.querySelectorAll(s));
-    const collAr = new Intl.Collator('ar', {sensitivity:'base'});
-    const tbody = $('#tbody'), countEl = $('#count');
-
-    // حالة
-    let students = [];      // من جدول students
-    let metrics  = {};      // من view student_metrics {student_id: {coursework_sum, conduct_points}}
-    let classes  = new Set();
-
-    // تحميل الطلاب + المقاييس
-    async function loadAll() {
-      // students
-      const {data:stu, error:err1} = await sb.from('students').select('id,name,class_name');
-      if (err1) { console.error(err1); alert('قراءة الطلاب فشلت: '+err1.message); return; }
-      students = (stu||[]).slice().sort((a,b)=> collAr.compare(a.name||'', b.name||''));
-      // classes
-      classes = new Set(students.map(s=>s.class_name).filter(Boolean));
-
-      // metrics view
-      const {data:met, error:err2} = await sb.from('student_metrics').select('*');
-      if (err2) { console.error(err2); alert('قراءة المقاييس فشلت: '+err2.message); return; }
-      metrics = {};
-      (met||[]).forEach(m => metrics[m.student_id] = {coursework_sum: Number(m.coursework_sum)||0, conduct_points: Number(m.conduct_points)||0});
-
-      fillClassFilter();
-      render();
-    }
-
-    // تعبئة فلتر الصف
-    function fillClassFilter(){
-      const sel = $('#filterClass');
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">الكل (كل الصفوف)</option>' +
-        Array.from(classes).sort((a,b)=>collAr.compare(a,b)).map(c=>`<option value="${c}">${c}</option>`).join('');
-      if (Array.from(classes).includes(cur)) sel.value = cur;
-    }
-
-    // فلترة + رسم
-    function render(){
-      const q = ($('#q').value||'').trim();
-      const klass = $('#filterClass').value||'';
-      let rows = students.slice();
-
-      if (klass) rows = rows.filter(s => (s.class_name||'') === klass);
-      if (q) rows = rows.filter(s => (s.name||'').includes(q));
-
-      rows = rows.sort((a,b)=> collAr.compare(a.name||'', b.name||''));
-
-      countEl.textContent = `العدد: ${rows.length}`;
-
-      if (!rows.length){
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">لا نتائج</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = rows.map((s, i) => {
-        const m = metrics[s.id] || {coursework_sum:0, conduct_points:0};
-        const cp = m.conduct_points;
-        const cpClass = cp >= 0 ? 'style="color:#16a34a;font-weight:700"' : 'style="color:#dc2626;font-weight:700"';
-        return `
+  <!-- الطلاب -->
+  <section id="tab-students" class="card">
+    <h3>إدارة الطلاب</h3>
+    <div class="row">
+      <input id="stName" placeholder="اسم الطالب" />
+      <input id="stClass" placeholder="الصف/الشعبة: مثال ٦/أ" />
+      <button id="addStudent" class="primary">إضافة</button>
+    </div>
+    <div class="row">
+      <select id="filterClass"></select>
+      <input id="filterName" placeholder="بحث بالاسم" />
+      <button id="btnImportCsv">استيراد CSV</button>
+      <input id="csvFile" type="file" accept=".csv" />
+      <span class="small">* الترتيب أبجدي عربي في العرض فقط</span>
+    </div>
+    <div class="card">
+      <table id="studentsTbl">
+        <thead>
           <tr>
-            <td>${i+1}</td>
-            <td>${escapeHtml(s.name||'')}</td>
-            <td>${escapeHtml(s.class_name||'')}</td>
-            <td>${m.coursework_sum.toFixed(1)}</td>
-            <td ${cpClass}>${cp.toFixed(1)}</td>
-            <td><button class="btn danger" data-del="${s.id}">حذف</button></td>
-          </tr>`;
-      }).join('');
-    }
+            <th style="width:60px">#</th>
+            <th>الاسم</th>
+            <th style="width:140px">الصف</th>
+            <th style="width:180px">مجموع الدرجات (بدون النهائي)</th>
+            <th style="width:180px">نقاط السلوك/المواظبة</th>
+            <th style="width:140px">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+  <!-- الحضور -->
+  <section id="tab-attendance" class="card hidden">
+    <h3>تسجيل الانضباط (الحضور)</h3>
+    <div class="row">
+      <select id="attStudent"></select>
+      <input type="date" id="attDate" />
+      <select id="attPeriod"><option value="">الحصة</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select>
+      <select id="attType"><option value="">نوع الانضباط</option><option value="حاضر">حاضر (+0.5)</option><option value="غائب">غائب (-1)</option><option value="مستأذن">مستأذن (0)</option></select>
+      <button id="addAtt" class="primary">حفظ</button>
+    </div>
+    <div class="row">
+      <select id="attFilterClass"></select>
+      <select id="attFilterStudent"></select>
+      <input type="date" id="attFilterDate" />
+      <button id="reloadAtt">تحديث</button>
+    </div>
+    <div class="card">
+      <table id="attTbl">
+        <thead><tr><th>#</th><th>التاريخ</th><th>الحصة</th><th>النوع</th><th>الطالب</th><th>إجراءات</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-    // إضافة طالب
-    $('#add').addEventListener('click', async ()=>{
-      const name = ($('#name').value||'').trim();
-      const klass = ($('#klass').value||'').trim();
-      if (!name){ $('#name').focus(); return; }
-      const { data, error } = await sb.from('students').insert({ name, class_name: klass||null }).select().single();
-      if (error){ alert('فشل الإضافة: '+error.message); return; }
-      $('#name').value = ''; $('#klass').value='';
-      await loadAll();
-    });
+  <!-- السلوك -->
+  <section id="tab-behavior" class="card hidden">
+    <h3>تسجيل السلوك</h3>
+    <div class="row">
+      <select id="bhStudent"></select>
+      <input type="date" id="bhDate" />
+      <select id="bhPeriod"><option value="">الحصة</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select>
+      <select id="bhType"><option value="">نوع السلوك</option><option value="إيجابي">إيجابي (+0.5)</option><option value="سلبي">سلبي (-1)</option></select>
+      <input id="bhNote" placeholder="وصف السلوك (اختياري)" />
+      <button id="addBh" class="primary">حفظ</button>
+    </div>
+    <div class="row">
+      <select id="bhFilterClass"></select>
+      <select id="bhFilterStudent"></select>
+      <input type="date" id="bhFilterDate" />
+      <button id="reloadBh">تحديث</button>
+    </div>
+    <div class="card">
+      <table id="bhTbl">
+        <thead><tr><th>#</th><th>التاريخ</th><th>الحصة</th><th>السلوك</th><th>الوصف</th><th>الطالب</th><th>إجراءات</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-    // حذف طالب
-    tbody.addEventListener('click', async (e)=>{
-      const id = e.target?.dataset?.del; if (!id) return;
-      if (!confirm('حذف الطالب نهائيًا؟')) return;
-      const { error } = await sb.from('students').delete().eq('id', id);
-      if (error){ alert('فشل الحذف: '+error.message); return; }
-      await loadAll();
-    });
+  <!-- الدرجات -->
+  <section id="tab-grades" class="card hidden">
+    <h3>درجات الفصل</h3>
+    <div class="row">
+      <select id="grClass"></select>
+      <button id="loadClassGrades">جلب طلاب الصف</button>
+      <span class="small">التوزيع: مشاركة 10، واجبات 10، مهام أدائية 20، اختبار فترة 20، نهائي 40.</span>
+    </div>
+    <div class="card">
+      <table id="gradesTbl">
+        <thead>
+          <tr>
+            <th>#</th><th>الاسم</th>
+            <th>مشاركة (10)</th><th>واجبات (10)</th><th>مهام أدائية (20)</th><th>اختبار فترة (20)</th><th>نهائي (40)</th>
+            <th>المجموع</th><th>حفظ</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-    // بحث/فلترة
-    $('#q').addEventListener('input', render);
-    $('#filterClass').addEventListener('change', render);
+  <!-- التقارير -->
+  <section id="tab-reports" class="card hidden">
+    <h3>إنشاء تقرير تنبيهي</h3>
+    <div class="row">
+      <select id="rpStudent"></select>
+      <select id="rpType"><option value="غياب">غياب</option><option value="انضباط وسلوك">انضباط وسلوك</option></select>
+      <select id="rpTo"><option>المدير</option><option>الموجه الطلابي</option><option>المعلم</option><option>ولي أمر الطالب</option></select>
+      <input id="rpHijri" placeholder="تاريخ التقرير (هجري)" />
+    </div>
+    <div class="row"><textarea id="rpBody" rows="4" placeholder="وصف مختصر للحالة ..."></textarea></div>
+    <div class="row"><button id="printReport" class="primary">طباعة التقرير</button></div>
+    <hr/>
+    <div id="reportView" class="card" style="background:#fff"></div>
+  </section>
 
-    // استيراد CSV (عمودين: name,class_name) سطر لكل طالب
-    $('#importBtn').addEventListener('click', ()=> $('#importFile').click());
-    $('#importFile').addEventListener('change', async (e)=>{
-      const f = e.target.files?.[0]; if(!f) return;
-      const text = await f.text();
-      const rows = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-      if (!rows.length) return;
-      // تخطي هيدر محتمل
-      const guessHeader = rows[0].toLowerCase().includes('name') || rows[0].includes('الاسم');
-      const data = (guessHeader ? rows.slice(1) : rows).map(line=>{
-        const [name, klass] = line.split(',').map(x=> (x||'').trim());
-        return { name, class_name: klass||null };
-      }).filter(r=>r.name);
-      if (!data.length) return;
-      const { error } = await sb.from('students').insert(data);
-      if (error){ alert('فشل الاستيراد: '+error.message); return; }
-      $('#importFile').value = '';
-      await loadAll();
-    });
+  <!-- المرفقات -->
+  <section id="tab-attachments" class="card hidden">
+    <h3>مرفقات الطلاب (Storage)</h3>
+    <div class="row">
+      <select id="upStudent"></select>
+      <input type="file" id="upFile" />
+      <button id="doUpload" class="primary">رفع</button>
+      <button id="refreshFiles">تحديث القائمة</button>
+      <span class="small">حاوية التخزين: <span class="kbd">student-docs</span> — يجب أن تكون Public.</span>
+    </div>
+    <div class="card">
+      <table id="filesTbl">
+        <thead><tr><th>#</th><th>الاسم/النوع</th><th>الحجم</th><th>التاريخ</th><th>رابط</th><th>حذف</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-    // تصدير CSV
-    $('#exportBtn').addEventListener('click', ()=>{
-      const header = 'name,class_name,coursework_sum,conduct_points';
-      const lines = students.map(s=>{
-        const m = metrics[s.id] || {coursework_sum:0, conduct_points:0};
-        return `"${(s.name||'').replace(/"/g,'""')}","${(s.class_name||'').replace(/"/g,'""')}",${m.coursework_sum},${m.conduct_points}`;
-      });
-      const csv = [header, ...lines].join('\n');
-      const blob = new Blob([csv], {type:'text/csv'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'students.csv';
-      a.click();
-    });
+  <!-- الإعدادات -->
+  <section id="tab-settings" class="card hidden">
+    <h3>الإعدادات</h3>
+    <div class="row">
+      <input id="schName" placeholder="اسم المدرسة" />
+      <input id="schPrincipal" placeholder="اسم المدير" />
+      <input id="schCounselor" placeholder="اسم الموجه الطلابي" />
+      <input id="schTeacher" placeholder="اسم المعلم (الرياضيات)" />
+    </div>
+    <div class="row">
+      <input id="sbUrl" placeholder="SUPABASE_URL" />
+      <input id="sbKey" placeholder="SUPABASE_ANON_KEY" />
+      <button id="saveSettings" class="primary">حفظ الإعدادات</button>
+      <button id="wipeLocal">مسح المحلي</button>
+      <button id="wipeCloud" class="danger">مسح السحابي (تحذير)</button>
+    </div>
+    <div class="small">الإعدادات تُحفظ محليًا؛ الاتصال يعتمد القيم المبينة.</div>
+  </section>
 
-    // تشغيل أولي
-    loadAll();
-  })();
-  </script>
+  <footer>© 2025 — Supabase + GitHub Pages</footer>
+</main>
+
+<script>
+/* ===== إعداد الاتصال ===== */
+const DEFAULT_SUPABASE_URL = "https://alamidjtlxuquvjvvcac.supabase.co";
+const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYW1pZGp0bHh1cXV2anZ2Y2FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDAwMTMsImV4cCI6MjA3MTYxNjAxM30.WGMo2sdJszJRp4Pkf91BfL7OOWrjNV_z82L8T-ZrjtU";
+const LS = { url:"sb_url", key:"sb_key", meta:"school_meta" };
+function getCfg(){ return { url: localStorage.getItem(LS.url)||DEFAULT_SUPABASE_URL, key: localStorage.getItem(LS.key)||DEFAULT_SUPABASE_KEY } }
+let supa;
+function connect(){
+  const cfg = getCfg();
+  if(!window.supabase){ alert("CDN Supabase مفقود"); return; }
+  supa = window.supabase.createClient(cfg.url, cfg.key);
+  document.getElementById("btnSync").textContent = "Sync ✓";
+  console.log("Supabase ready:", cfg.url);
+}
+connect();
+
+/* ===== تبويبات ===== */
+const tabs = document.querySelectorAll("#tabs button");
+const pages = {
+  students: document.getElementById("tab-students"),
+  attendance: document.getElementById("tab-attendance"),
+  behavior: document.getElementById("tab-behavior"),
+  grades: document.getElementById("tab-grades"),
+  reports: document.getElementById("tab-reports"),
+  attachments: document.getElementById("tab-attachments"),
+  settings: document.getElementById("tab-settings"),
+};
+tabs.forEach(b=>b.onclick=()=>{
+  tabs.forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  Object.values(pages).forEach(p=>p.classList.add("hidden"));
+  pages[b.dataset.tab].classList.remove("hidden");
+  if(b.dataset.tab==="students") loadStudents();
+  if(b.dataset.tab==="attendance"){ fillStudentSelects(); loadAttendance(); }
+  if(b.dataset.tab==="behavior"){ fillStudentSelects(); loadBehavior(); }
+  if(b.dataset.tab==="grades"){ fillClassSelects(); }
+  if(b.dataset.tab==="reports"){ fillStudentSelects(); }
+  if(b.dataset.tab==="attachments"){ fillStudentSelects(); listFiles(); }
+  if(b.dataset.tab==="settings") loadSettings();
+});
+
+/* ===== أدوات ===== */
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+const humanSize=(bytes)=>{ if(bytes==null) return "-"; const u=["B","KB","MB","GB"]; let i=0,b=+bytes; while(b>1024&&i<u.length-1){b/=1024;i++} return b.toFixed(1)+" "+u[i] };
+const hijriToday = ()=> new Date().toLocaleDateString('ar-SA-u-ca-islamic',{dateStyle:'medium'});
+
+/* ===== الطلاب ===== */
+const stName=document.getElementById("stName"), stClass=document.getElementById("stClass"), studentsTbl=document.querySelector("#studentsTbl tbody");
+const addStudentBtn=document.getElementById("addStudent"), filterClass=document.getElementById("filterClass"), filterName=document.getElementById("filterName");
+
+async function fillClassSelects(){
+  const { data } = await supa.from("students").select("class_name").order("class_name",{ascending:true});
+  const uniq=["الكل",...Array.from(new Set((data||[]).map(x=>x.class_name).filter(Boolean)))];
+  [filterClass, document.getElementById("grClass"), document.getElementById("attFilterClass"), document.getElementById("bhFilterClass")]
+    .forEach(sel=>{ if(!sel) return; const keep=sel.value; sel.innerHTML=uniq.map(c=>`<option>${c}</option>`).join(""); if(keep) sel.value=keep; });
+}
+async function fillStudentSelects(){
+  const { data } = await supa.from("students").select("id,name,class_name").order("name",{ascending:true});
+  const fill = id => { const el=document.getElementById(id); if(!el) return; el.innerHTML=(data||[]).map(s=>`<option value="${s.id}">${s.name} (${s.class_name||"-"})</option>`).join("") };
+  ["attStudent","bhStudent","rpStudent","upStudent","attFilterStudent","bhFilterStudent"].forEach(fill);
+}
+
+async function totalPoints(studentId){
+  const a=await supa.from("attendance").select("type").eq("student_id",studentId);
+  const pa=(a.data||[]).reduce((s,r)=>r.type==="حاضر"?s+0.5:r.type==="غائب"?s-1:s,0);
+  const b=await supa.from("behavior").select("type").eq("student_id",studentId);
+  const pb=(b.data||[]).reduce((s,r)=>r.type==="إيجابي"?s+0.5:r.type==="سلبي"?s-1:s,0);
+  return pa+pb;
+}
+async function partialGradesTotal(studentId){
+  const { data } = await supa.from("grades").select("participation,homework,performance_task,midterm").eq("student_id",studentId).single();
+  if(!data) return 0;
+  const v=x=>Number(x||0);
+  return v(data.participation)+v(data.homework)+v(data.performance_task)+v(data.midterm);
+}
+
+async function loadStudents(){
+  const cls=filterClass.value||null, nameLike=(filterName.value||"").trim();
+  let q=supa.from("students").select("*").order("name",{ascending:true});
+  if(cls&&cls!=="الكل") q=q.eq("class_name",cls);
+  if(nameLike) q=q.ilike("name",`%${nameLike}%`);
+  const { data, error } = await q;
+  if(error){ console.error(error); return; }
+  studentsTbl.innerHTML=""; let i=1;
+  for(const r of data){
+    const [points,partial]=await Promise.all([totalPoints(r.id),partialGradesTotal(r.id)]);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i++}</td><td>${r.name}</td><td>${r.class_name||"-"}</td>
+    <td>${partial.toFixed(1)}</td><td>${points.toFixed(1)}</td>
+    <td class="actions"><button class="danger" data-del="${r.id}">حذف</button></td>`;
+    studentsTbl.appendChild(tr);
+  }
+  await fillClassSelects();
+  studentsTbl.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("حذف الطالب وكل سجلاته؟")) return;
+    const sid=b.dataset.del;
+    await supa.from("attendance").delete().eq("student_id",sid);
+    await supa.from("behavior").delete().eq("student_id",sid);
+    await supa.from("grades").delete().eq("student_id",sid);
+    await supa.from("attachments").delete().eq("student_id",sid);
+    await supa.from("students").delete().eq("id",sid);
+    loadStudents();
+  });
+}
+addStudentBtn.onclick=async()=>{
+  const name=stName.value.trim(), cls=stClass.value.trim();
+  if(!name||!cls){ alert("أدخل الاسم والصف"); return; }
+  const { error } = await supa.from("students").insert({name, class_name:cls});
+  if(error){ alert(error.message); return; }
+  stName.value=""; stClass.value=""; loadStudents();
+};
+document.getElementById("btnImportCsv").onclick=()=>document.getElementById("csvFile").click();
+document.getElementById("csvFile").onchange=async(e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const text=await f.text(); const rows=text.split(/\r?\n/).map(l=>l.split(",")).filter(a=>a[0]);
+  const payload=[]; for(const r of rows){ const n=(r[0]||"").trim(), c=(r[1]||"").trim(); if(n&&c) payload.push({name:n,class_name:c}); }
+  if(payload.length) await supa.from("students").insert(payload);
+  e.target.value=""; loadStudents();
+};
+filterName.oninput=loadStudents; filterClass.onchange=loadStudents;
+
+/* ===== الحضور ===== */
+document.getElementById("addAtt").onclick=async()=>{
+  const sid=document.getElementById("attStudent").value;
+  const date=document.getElementById("attDate").value || new Date().toISOString().slice(0,10);
+  const per=document.getElementById("attPeriod").value||null;
+  const typ=document.getElementById("attType").value;
+  if(!sid||!typ){ alert("اختر الطالب والنوع"); return; }
+  const { error } = await supa.from("attendance").insert({student_id:sid,date,period:per,type:typ});
+  if(error) return alert(error.message);
+  loadAttendance();
+};
+async function loadAttendance(){
+  const cls=document.getElementById("attFilterClass").value;
+  const sid=document.getElementById("attFilterStudent").value;
+  const dt=document.getElementById("attFilterDate").value;
+  let q=supa.from("attendance").select("id,date,period,type,students(id,name,class_name)").order("date",{ascending:false});
+  if(sid) q=q.eq("student_id",sid); if(dt) q=q.eq("date",dt);
+  const { data, error } = await q; if(error){ console.error(error); return; }
+  const tb=document.querySelector("#attTbl tbody"); tb.innerHTML=""; let i=1;
+  for(const r of data){
+    if(cls&&cls!=="الكل"&&r.students?.class_name!==cls) continue;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i++}</td><td>${r.date||"-"}</td><td>${r.period||"-"}</td><td>${r.type}</td><td>${r.students?.name||"?"}</td>
+    <td><button class="danger" data-id="${r.id}">حذف</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("button[data-id]").forEach(b=>b.onclick=async()=>{ await supa.from("attendance").delete().eq("id",b.dataset.id); loadAttendance(); });
+}
+document.getElementById("reloadAtt").onclick=loadAttendance;
+
+/* ===== السلوك ===== */
+document.getElementById("addBh").onclick=async()=>{
+  const sid=document.getElementById("bhStudent").value;
+  const date=document.getElementById("bhDate").value || new Date().toISOString().slice(0,10);
+  const per=document.getElementById("bhPeriod").value||null;
+  const typ=document.getElementById("bhType").value;
+  const note=document.getElementById("bhNote").value||null;
+  if(!sid||!typ){ alert("اختر الطالب ونوع السلوك"); return; }
+  const { error } = await supa.from("behavior").insert({student_id:sid,date,period:per,type:typ,note});
+  if(error) return alert(error.message);
+  loadBehavior();
+};
+async function loadBehavior(){
+  const cls=document.getElementById("bhFilterClass").value;
+  const sid=document.getElementById("bhFilterStudent").value;
+  const dt=document.getElementById("bhFilterDate").value;
+  let q=supa.from("behavior").select("id,date,period,type,note,students(id,name,class_name)").order("date",{ascending:false});
+  if(sid) q=q.eq("student_id",sid); if(dt) q=q.eq("date",dt);
+  const { data, error } = await q; if(error){ console.error(error); return; }
+  const tb=document.querySelector("#bhTbl tbody"); tb.innerHTML=""; let i=1;
+  for(const r of data){
+    if(cls&&cls!=="الكل"&&r.students?.class_name!==cls) continue;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i++}</td><td>${r.date||"-"}</td><td>${r.period||"-"}</td><td>${r.type}</td><td>${r.note||""}</td><td>${r.students?.name||"?"}</td>
+    <td><button class="danger" data-id="${r.id}">حذف</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("button[data-id]").forEach(b=>b.onclick=async()=>{ await supa.from("behavior").delete().eq("id",b.dataset.id); loadBehavior(); });
+}
+document.getElementById("reloadBh").onclick=loadBehavior;
+
+/* ===== الدرجات ===== */
+document.getElementById("loadClassGrades").onclick=async()=>{
+  const cls=document.getElementById("grClass").value;
+  if(!cls||cls==="الكل"){ alert("اختر صفًا"); return; }
+  const { data:students } = await supa.from("students").select("id,name,class_name").eq("class_name",cls).order("name",{ascending:true});
+  const tb=document.querySelector("#gradesTbl tbody"); tb.innerHTML=""; let i=1;
+  for(const s of (students||[])){
+    let { data:g } = await supa.from("grades").select("*").eq("student_id",s.id).single();
+    g=g||{participation:0,homework:0,performance_task:0,midterm:0,final_exam:0};
+    const total=(+g.participation||0)+(+g.homework||0)+(+g.performance_task||0)+(+g.midterm||0)+(+g.final_exam||0);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${i++}</td><td>${s.name}</td>
+      <td><input data-f="p" value="${g.participation||0}" type="number" min="0" max="10" style="width:80px"></td>
+      <td><input data-f="h" value="${g.homework||0}" type="number" min="0" max="10" style="width:80px"></td>
+      <td><input data-f="t" value="${g.performance_task||0}" type="number" min="0" max="20" style="width:90px"></td>
+      <td><input data-f="m" value="${g.midterm||0}" type="number" min="0" max="20" style="width:90px"></td>
+      <td><input data-f="f" value="${g.final_exam||0}" type="number" min="0" max="40" style="width:90px"></td>
+      <td class="sum">${total}</td>
+      <td><button class="primary" data-save="${s.id}">حفظ</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("[data-save]").forEach(btn=>btn.onclick=async()=>{
+    const tr=btn.closest("tr"), ins=tr.querySelectorAll("input"), val=k=>Number([...ins].find(x=>x.dataset.f===k).value||0);
+    const payload={student_id:btn.dataset.save, participation:val("p"), homework:val("h"), performance_task:val("t"), midterm:val("m"), final_exam:val("f")};
+    const { error } = await supa.from("grades").upsert(payload,{onConflict:"student_id"}); if(error) return alert(error.message);
+    tr.querySelector(".sum").textContent = payload.participation+payload.homework+payload.performance_task+payload.midterm+payload.final_exam;
+  });
+});
+
+/* ===== التقارير ===== */
+document.getElementById("printReport").onclick=async()=>{
+  const sid=document.getElementById("rpStudent").value;
+  const { data:s } = await supa.from("students").select("*").eq("id",sid).single();
+  const type=document.getElementById("rpType").value, to=document.getElementById("rpTo").value;
+  const hijri=document.getElementById("rpHijri").value || hijriToday();
+  const body=(document.getElementById("rpBody").value||"").trim();
+  const meta=JSON.parse(localStorage.getItem(LS.meta)||"{}");
+  const sch=meta.schName||"واقد بن عبدالله الابتدائية ومتوسطة صدر وائلة";
+  const principal=meta.schPrincipal||"مدير المدرسة";
+  const teacher=meta.schTeacher||"معلم الرياضيات";
+  const html=`
+    <div style="text-align:center">
+      <div style="font-weight:bold">وزارة التعليم</div>
+      <div style="font-weight:bold">إدارة تعليم عسير</div>
+      <div style="font-weight:bold">${sch}</div>
+      <div class="small">التاريخ (هجري): ${hijri}</div><hr/>
+    </div>
+    <p>إلى ${to}،</p>
+    <p>نفيدكم بأن الطالب <b>${s?.name||"-"}</b> (${s?.class_name||"-"}) بحاجة إلى لفت انتباه بسبب: <b>${type}</b>.</p>
+    ${body?`<p>${body}</p>`:""}
+    <br/><div>ولي أمر الطالب / ____________________</div><br/><br/>
+    <div>المعلم: ${teacher}</div><div>مدير المدرسة: ${principal}</div>`;
+  const w=window.open("","_blank"); w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير</title></head><body>${html}</body></html>`); w.document.close(); w.focus(); w.print(); await sleep(200); w.close();
+};
+
+/* ===== المرفقات (Storage) ===== */
+const BUCKET="student-docs";
+async function listFiles(){
+  const sid=document.getElementById("upStudent").value; const tb=document.querySelector("#filesTbl tbody"); tb.innerHTML=""; if(!sid) return;
+  const prefix=sid+"/"; const { data, error } = await supa.storage.from(BUCKET).list(prefix,{limit:100,offset:0}); if(error){ console.warn(error.message); return; }
+  let i=1; for(const f of (data||[])){
+    const { data:signed } = await supa.storage.from(BUCKET).createSignedUrl(prefix+f.name,3600);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i++}</td><td>${f.name}</td><td>${humanSize(f?.metadata?.size)}</td><td>${new Date(f.created_at).toLocaleString()}</td>
+      <td><a href="${signed?.signedUrl}" target="_blank">فتح</a></td><td><button class="danger" data-del="${prefix+f.name}">حذف</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ await supa.storage.from(BUCKET).remove([b.dataset.del]); listFiles(); });
+}
+document.getElementById("refreshFiles").onclick=listFiles;
+document.getElementById("doUpload").onclick=async()=>{
+  const sid=document.getElementById("upStudent").value; const f=document.getElementById("upFile").files[0];
+  if(!sid||!f){ alert("اختر الطالب والملف"); return; }
+  const path=`${sid}/${Date.now()}_${f.name}`; const { error } = await supa.storage.from(BUCKET).upload(path,f,{upsert:false});
+  if(error){ alert(error.message+"\nتأكد أن الحاوية Public واسمها student-docs"); return; }
+  try{ await supa.from("attachments").insert({student_id:sid,file_name:f.name,url:path,size:f.size}); }catch(e){}
+  listFiles();
+};
+
+/* ===== الإعدادات ===== */
+function loadSettings(){
+  const meta=JSON.parse(localStorage.getItem(LS.meta)||"{}");
+  document.getElementById("schName").value=meta.schName||"";
+  document.getElementById("schPrincipal").value=meta.schPrincipal||"";
+  document.getElementById("schCounselor").value=meta.schCounselor||"";
+  document.getElementById("schTeacher").value=meta.schTeacher||"";
+  document.getElementById("sbUrl").value=localStorage.getItem(LS.url)||DEFAULT_SUPABASE_URL;
+  document.getElementById("sbKey").value=localStorage.getItem(LS.key)||DEFAULT_SUPABASE_KEY;
+}
+document.getElementById("saveSettings").onclick=()=>{ 
+  const meta={ schName:schName.value, schPrincipal:schPrincipal.value, schCounselor:schCounselor.value, schTeacher:schTeacher.value };
+  localStorage.setItem(LS.meta,JSON.stringify(meta));
+  localStorage.setItem(LS.url, sbUrl.value.trim()); localStorage.setItem(LS.key, sbKey.value.trim());
+  alert("تم حفظ الإعدادات وإعادة تهيئة الاتصال"); connect();
+};
+document.getElementById("wipeLocal").onclick=()=>{ if(!confirm("مسح الإعدادات المحلية؟")) return; [LS.url,LS.key,LS.meta].forEach(k=>localStorage.removeItem(k)); alert("تم المسح."); };
+document.getElementById("wipeCloud").onclick=async()=>{
+  if(!confirm("تحذير: سيُحذف كل شيء من الجداول! متأكد؟")) return;
+  await supa.from("attendance").delete().neq("id","00000000-0000-0000-0000-000000000000");
+  await supa.from("behavior").delete().neq("id","00000000-0000-0000-0000-000000000000");
+  await supa.from("grades").delete().neq("student_id","00000000-0000-0000-0000-000000000000");
+  await supa.from("attachments").delete().neq("student_id","00000000-0000-0000-0000-000000000000");
+  await supa.from("students").delete().neq("id","00000000-0000-0000-0000-000000000000");
+  alert("تم المسح السحابي.");
+};
+
+/* ===== تشغيل أولي ===== */
+(async function boot(){ await fillClassSelects(); await fillStudentSelects(); await loadStudents(); })();
+</script>
 </body>
 </html>
